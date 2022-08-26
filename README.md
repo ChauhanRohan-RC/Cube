@@ -10,37 +10,42 @@
 
 # Moves (Clockwise)
 
-U: Up
-R: Right
-F: Front
-D: Down
-L: Left
-B: Back
+1. U: Up
+2. R: Right
+3. F: Front
+4. D: Down
+5. L: Left
+6. B: Back
 
--> Moves are case insensitive
--> Add prime (') for anticlockwise move. ex R [clockwise] -> R' [anti-clockwise]
+7. Moves are case insensitive
+8. Add prime (') for anticlockwise move. ex R [clockwise] -> R' [anti-clockwise]
+9. type move twice for a half turn (180 deg)
 
--> type move twice for a half turn (180 deg)
-example: R [single turn] -> RR [double turn]
+example
+1. R [single turn] -> RR [double turn]
 
--> To turn middle slice, add it's index [0, n-1] from the side of move
-example: 1. To turn 2nd slice from right -> R1
-	      2. To turn 4th slice from UP anticlockwise -> U'3
+10. To turn middle slice, add it's index [0, n-1] from the side of move
+
+example:
+1. To turn 2nd slice from right -> R1
+2. To turn 4th slice from UP anticlockwise -> U'3
  
--> To turn multiple slices in a single move, type their indices in brackets separated by comma
-example: Turn 1st and 3rd slices from right in a 5*5 cube -> R[0,2]
+11. To turn multiple slices in a single move, type their indices in brackets separated by comma
+
+example:
+1. Turn 1st and 3rd slices from right in a 5*5 cube -> R[0,2]
 
 
 # Commands
 
--> n [dimension] -> set cube dimension
--> scramble [moves]: scramble with given no of moves
--> solve: Solve/Apply solution (Only for 3*3 cube)
--> reset [what]: Reset [cube, zoom]
--> undo: undo last move
--> finish [c]: finish/cancel animating and pending moves
--> enter moves sequence (moves separated by space)
--> exit/quit: quit
+1. n [dimension] -> set cube dimension
+2. scramble [moves]: scramble with given no of moves
+3. solve: Solve/Apply solution (Only for 3*3 cube)
+4. reset [what]: Reset [cube, zoom]
+5. undo: undo last move
+6. finish [c]: finish/cancel animating and pending moves
+7. enter moves sequence (moves separated by space)
+8. exit/quit: quit
 
 # Demo
 
