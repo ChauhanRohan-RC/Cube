@@ -18,22 +18,10 @@
 6. B: Back
 
 7. Moves are case insensitive
-8. Add prime (') for anticlockwise move. ex R [clockwise] -> R' [anti-clockwise]
-9. type move twice for a half turn (180 deg)
-
-example
-1. R [single turn] -> RR [double turn]
-
-10. To turn middle slice, add it's index [0, n-1] from the side of move
-
-example:
-1. To turn 2nd slice from right -> R1
-2. To turn 4th slice from UP anticlockwise -> U'3
- 
-11. To turn multiple slices in a single move, type their indices in brackets separated by comma
-
-example:
-1. Turn 1st and 3rd slices from right in a 5*5 cube -> R[0,2]
+8. Add prime (') for anticlockwise move. ex: R (for clockwise) -> R' (for anti-clockwise)
+9. type move twice for a half turn (180 deg). ex: R (for single turn) -> RR (for double turn)
+10. To turn middle slice, add it's index [0, n-1] from the side of move. ex: R1 (turns 2nd slice from right),  U'3 (turns 4th slice from UP anticlockwise])
+11. To turn multiple slices in a single move, type their indices in brackets separated by comma. ex: R[0,2] (turns 1st and 3rd slices from right in a 5*5 cube)
 
 
 # Commands
