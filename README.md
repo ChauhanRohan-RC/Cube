@@ -2,6 +2,10 @@
 
 # A modular 3D N*N rubik's cube program with solver and command line control
 
+# Demo
+
+https://www.youtube.com/watch?v=Ivm3o5bG-fI
+
 # Usage
 
 1. Install Java on your computer and add it to the path
@@ -34,7 +38,3 @@
 6. finish [c]: finish/cancel animating and pending moves
 7. enter moves sequence (moves separated by space)
 8. exit/quit: quit
-
-# Demo
-
-https://www.youtube.com/watch?v=Ivm3o5bG-fI
