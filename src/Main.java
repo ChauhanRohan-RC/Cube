@@ -24,32 +24,6 @@ import java.util.Scanner;
 
 public class Main extends PApplet implements Cube.Listener {
 
-    public static final String SHELL_ROOT_NS = "cube:RC";       // Name Space
-
-    @NotNull
-    public static String shellPath(@Nullable String child) {
-        return (Util.isEmpty(child)? SHELL_ROOT_NS: SHELL_ROOT_NS + "\\" + child) + ">";
-    }
-
-    public static final String SHELL_ROOT = shellPath(null);
-    public static final String SHELL_DIMENSION = shellPath("dim");
-    public static final String SHELL_SCRAMBLE = shellPath("scramble");
-    public static final String SHELL_SOLVER = shellPath("solve");
-    public static final String SHELL_MOVE = shellPath("move");
-
-    public static final String DES_CONTROLS_MOVES = "U....Up\nR....Right\nF....Front\nD...Down\nL....Left\nB...Back\n\nSHIFT-Move....Inverse Move\nALT-Move.......Twice Move\nCTRL-Move....2 Slice Move";
-    public static final String DES_CONTROLS_SOLVE = "S..................Solve\nSPACE.......Scramble\nA..................Animate Moves\nX..................Finish Moves\nSHIFT-X....Cancel Moves\nSHIFT-Q....Reset Cube\nN/M............Change Cube";
-    public static final String DES_CONTROLS_CUBE_CAMERA = "Up.....................Rotate Up\nDown..........Rotate Down\nLeft.................Rotate Left\nRight............Rotate Right\nCTRL-Left............Roll Left\nCTRL-Right.......Roll Right\n\n+/-................Zoom In/Out\nQ................................Reset\nC.............Toggle Controls";
-
-    public static final String DES_SHELL_COMMANDS = "# COMMANDS\n -> n [dimension] -> set cube dimension\n -> scramble [moves]: scramble with given no of moves\n -> solve: Solve/Apply solution (Only for 3*3 cube)\n -> reset [what]: Reset [cube, zoom]\n -> undo: undo last move\n -> finish [c]: finish/cancel animating and pending moves\n -> enter moves sequence (moves separated by space)\n -> exit/quit: quit\n";
-    public static final String DES_SHELL_MOVES = "# MOVES (Clockwise)\n  U: Up\n  R: Right\n  F: Front\n  D: Down\n  L: Left\n  B: Back\n\n -> Moves are case insensitive\n -> Add prime (') for anticlockwise move. ex R [clockwise] -> R' [anti-clockwise]\n -> type move twice for a half turn (180 deg)\n     ex R [single turn] -> RR [double turn]\n -> To turn middle slice, add it's index [0, n-1] from the side of move\n     ex 1. To turn 2nd slice from right -> R1\n        2. To turn 4th slice from UP anticlockwise -> U'3\n -> To turn multiple slices in a single move, type their indices in brackets separated by comma\n     ex Turn 1st and 3rd slices from right in a 5*5 cube -> R[0,2]";
-    public static final String SHELL_INSTRUCTIONS = "\n............................. RC CUBE (For Neutron Star @FEB 16, 2001) ..............................\n\n" + DES_SHELL_MOVES + "\n\n\n" + DES_SHELL_COMMANDS;
-
-    public static boolean createReadme() {
-        return R.createReadme(SHELL_INSTRUCTIONS);
-    }
-
-
     @NotNull
     public static Dimension windowSize(int displayW, int displayH) {
         return new Dimension(Math.round(displayW / 1.4f), Math.round(displayH / 1.4f));
@@ -77,7 +51,7 @@ public class Main extends PApplet implements Cube.Listener {
         if (alt) {
             q = Move.QUARTERS_2;
         } else {
-            q = shift? Move.QUARTERS_ANTICLOCKWISE: Move.QUARTERS_CLOCKWISE;
+            q = shift ? Move.QUARTERS_ANTICLOCKWISE : Move.QUARTERS_CLOCKWISE;
             if (ctrl) {
                 layers = Move.LAYERS_0_1;
             }
@@ -90,8 +64,6 @@ public class Main extends PApplet implements Cube.Listener {
     private static Move createMove(@NotNull Axis axis, @NotNull KeyEvent event) {
         return createMove(axis, event.isShiftDown(), event.isControlDown(), event.isAltDown());
     }
-
-
 
 
     /* Ui */
@@ -128,7 +100,7 @@ public class Main extends PApplet implements Cube.Listener {
     }
 
     public Main(int n) {
-        this(n >= 2? new Cube(n): null);
+        this(n >= 2 ? new Cube(n) : null);
     }
 
     public Main() {
@@ -234,11 +206,11 @@ public class Main extends PApplet implements Cube.Listener {
         final Dimension size = windowSize(displayWidth, displayHeight);
         size(size.width, size.height, P3D);
 
-        _w = width; _h = height;
+        _w = width;
+        _h = height;
 
         PJOGL.setIcon(R.APP_ICON.toString());       // app icon
     }
-
 
 
     @Override
@@ -264,7 +236,8 @@ public class Main extends PApplet implements Cube.Listener {
 
     public void preDraw() {
         if (_w != width || _h != height) {
-            _w = width; _h = height;
+            _w = width;
+            _h = height;
             onResized(width, height);
         }
 
@@ -307,7 +280,7 @@ public class Main extends PApplet implements Cube.Listener {
             strokeWeight(2);
 
             final float plen = Math.max(width, height);
-            final float nlen = GLConfig.CUBE_DRAW_ONLY_POSITIVE_AXISES? 0: plen;
+            final float nlen = GLConfig.CUBE_DRAW_ONLY_POSITIVE_AXISES ? 0 : plen;
 
             line(-nlen, 0, 0, plen, 0, 0);         // X
             line(0, nlen, 0, 0, -plen, 0);       // Y (invert)
@@ -316,7 +289,7 @@ public class Main extends PApplet implements Cube.Listener {
         }
 
         final float scale = cubeScale(width, height, getN()) * getCubeZoom();
-        scale(scale * (GLConfig.CUBE_INVERT_X? -1: 1), scale * (GLConfig.CUBE_INVERT_Y? -1: 1), scale * (GLConfig.CUBE_INVERT_Z? -1: 1));
+        scale(scale * (GLConfig.CUBE_INVERT_X ? -1 : 1), scale * (GLConfig.CUBE_INVERT_Y ? -1 : 1), scale * (GLConfig.CUBE_INVERT_Z ? -1 : 1));
         cubeGL.draw(this);
         popMatrix();
 
@@ -372,10 +345,10 @@ public class Main extends PApplet implements Cube.Listener {
 
             final float desY = titleY + titleTextSize + v_offset * 1.5f;
             textAlign(LEFT, TOP);
-            text(DES_CONTROLS_MOVES + "\n\n" + DES_CONTROLS_SOLVE, h_offset, desY);
+            text(R.DES_CONTROLS_MOVES + "\n\n" + R.DES_CONTROLS_SOLVE, h_offset, desY);
 
             textAlign(RIGHT, TOP);
-            text(DES_CONTROLS_CUBE_CAMERA, width - h_offset, desY);
+            text(R.DES_CONTROLS_CUBE_CAMERA, width - h_offset, desY);
             popStyle();
         }
 
@@ -433,7 +406,6 @@ public class Main extends PApplet implements Cube.Listener {
     }
 
 
-
     public void setCubeZoom(float zoom) {
         if (mFreeCam)
             return;
@@ -441,7 +413,7 @@ public class Main extends PApplet implements Cube.Listener {
     }
 
     public float getCubeZoom() {
-        return mFreeCam? 1: cubeZoom;
+        return mFreeCam ? 1 : cubeZoom;
     }
 
     public void incCubeZoom() {
@@ -613,19 +585,19 @@ public class Main extends PApplet implements Cube.Listener {
             return;
 
         mSolving = true;
-        Util.v(SHELL_SOLVER, "Solving state: " + cubeRepr2D());
+        Util.v(R.SHELL_SOLVER, "Solving state: " + cubeRepr2D());
 
         try {
             final Solver.Solution solution = Solver.solve3(getCube());
             mCurSolution = solution;
             if (solution.isEmpty()) {
-                Util.v(SHELL_SOLVER, "Already solved!");
+                Util.v(R.SHELL_SOLVER, "Already solved!");
             } else {
                 final Long msTaken = solution.getMsTaken();
-                Util.v(SHELL_SOLVER, "Solution: " + solution.getSequence() + (msTaken != null && msTaken > 0? ", time taken: " + msTaken + "ms": ""));
+                Util.v(R.SHELL_SOLVER, "Solution: " + solution.getSequence() + (msTaken != null && msTaken > 0 ? ", time taken: " + msTaken + "ms" : ""));
             }
         } catch (Exception exc) {
-            Util.e(SHELL_SOLVER, "Solver Failed: " + exc.getMessage());
+            Util.e(R.SHELL_SOLVER, "Solver Failed: " + exc.getMessage());
             invalidateSolution();
         }
 
@@ -637,7 +609,7 @@ public class Main extends PApplet implements Cube.Listener {
             return;
 
         if (getN() != 3) {
-            Util.w(SHELL_SOLVER, "Solver only works for 3*3 cube");
+            Util.w(R.SHELL_SOLVER, "Solver only works for 3*3 cube");
             return;
         }
 
@@ -687,7 +659,8 @@ public class Main extends PApplet implements Cube.Listener {
                 } else {
                     rotateCubeLeft();
                 }
-            } case java.awt.event.KeyEvent.VK_RIGHT -> {
+            }
+            case java.awt.event.KeyEvent.VK_RIGHT -> {
                 if (shouldRollOverRotatingCube(event)) {
                     rollCubeRight();
                 } else {
@@ -828,17 +801,18 @@ public class Main extends PApplet implements Cube.Listener {
     }
 
 
-
     public static void main(String[] args) {
-        final Main app = new Main();
-        PApplet.runSketch(concat(new String[] { app.getClass().getName() }, args), app);
+//        R.createShellInstructionsReadme();
 
-        println(SHELL_INSTRUCTIONS);
+        final Main app = new Main();
+        PApplet.runSketch(concat(new String[]{app.getClass().getName()}, args), app);
+
+        println(R.SHELL_INSTRUCTIONS);
         Scanner sc = new Scanner(System.in);
         boolean running = true;
 
         do {
-            print(SHELL_ROOT);
+            print(R.SHELL_ROOT);
             final String in = sc.nextLine();
             if (in.isEmpty())
                 continue;
@@ -847,24 +821,24 @@ public class Main extends PApplet implements Cube.Listener {
                 try {
                     final int n = Integer.parseInt(in.substring(1).replace(" ", ""));
                     if (n < 2 || n > CubeI.DEFAULT_MAX_N) {
-                        Util.e(SHELL_DIMENSION, "Cube dimension must be >= 2 and <= " + CubeI.DEFAULT_MAX_N);
+                        Util.e(R.SHELL_DIMENSION, "Cube dimension must be >= 2 and <= " + CubeI.DEFAULT_MAX_N);
                     } else {
                         app.setN(n);
                     }
                 } catch (NumberFormatException ignored) {
-                    Util.e(SHELL_DIMENSION, "Cube dimension must be an integer, command: n [dim]");
+                    Util.e(R.SHELL_DIMENSION, "Cube dimension must be an integer, command: n [dim]");
                 }
             } else if (in.startsWith("scramble")) {
                 int n = CubeI.DEFAULT_SCRAMBLE_MOVES;
                 try {
                     final int n2 = Integer.parseInt(in.substring(8).replace(" ", ""));
                     if (n2 <= 0) {
-                        Util.w(SHELL_SCRAMBLE, "Scramble moves must be positive integer, command: scramble [moves]");
+                        Util.w(R.SHELL_SCRAMBLE, "Scramble moves must be positive integer, command: scramble [moves]");
                     } else {
                         n = n2;
                     }
                 } catch (NumberFormatException ignored) {
-                    Util.w(SHELL_SCRAMBLE, "Scramble moves must be positive integer, command: scramble [moves]");
+                    Util.w(R.SHELL_SCRAMBLE, "Scramble moves must be positive integer, command: scramble [moves]");
                 }
 
                 app.scramble(n);
@@ -874,7 +848,7 @@ public class Main extends PApplet implements Cube.Listener {
                 } else {
                     app.resetCube();
                 }
-            } else if (in.startsWith("finish")){
+            } else if (in.startsWith("finish")) {
                 app.finishAllMoves(in.endsWith("c"));
             } else if (in.equals("solve")) {
                 app.solve();
@@ -890,7 +864,7 @@ public class Main extends PApplet implements Cube.Listener {
                         app.applySequence(moves);
                     }
                 } catch (Move.ParseException e) {
-                    Util.e(SHELL_MOVE, e.getMessage());
+                    Util.e(R.SHELL_MOVE, e.getMessage());
                 }
             }
 
