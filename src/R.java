@@ -30,7 +30,7 @@ public class R {
     public static final Path FONT_PD_SANS_MEDIUM = DIR_FONT.resolve("product_sans_medium.ttf");
 
 
-    public static final String APP_NAME = "RC Cube";
+    public static final String APP_NAME = "Rubik's Cube Solver-AI";
 
     // Shell
 
@@ -51,13 +51,13 @@ public class R {
     public static final String DES_SHELL_COMMANDS =
             """
             # COMMANDS
+             -> enter moves sequence (moves separated by space)
              -> n [dimension] -> set cube dimension
              -> scramble [moves]: scramble with given no of moves
              -> solve: Solve/Apply solution (Only for 3*3 cube)
              -> reset [what]: Reset [cube, zoom]
              -> undo: undo last move
              -> finish [c]: finish/cancel animating and pending moves
-             -> enter moves sequence (moves separated by space)
              -> exit/quit: quit
             """;
 
@@ -84,8 +84,8 @@ public class R {
             """;
 
     public static final String SHELL_INSTRUCTIONS =
-            "\n............................. 3D N*N Rubik's Cube AI ..............................\n" +
-            "This is a 3D Rubik's cube visualizer and solver program. It supports any N*N*N dimension cube, with UI and Command-Line controls\n\n"
+            "\n.......... "+ R.APP_NAME +" ..........\n" +
+            "This is a 3D generic N*N Rubik's cube simulator and solver program. It supports any N*N*N dimension cube, with both graphical and Command-Line controls\n\n"
             + DES_SHELL_MOVES + "\n"
             + DES_SHELL_COMMANDS;
 

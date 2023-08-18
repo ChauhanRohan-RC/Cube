@@ -1,21 +1,37 @@
-# Rubik's Cube Solver-AI  
+# Rubik's Cube Simulation and Solver-AI  
 
-#### This is a 3D N*N Rubik's cube simulation and AI solver program. It supports any N-dimension cube, with UI and Command-Line controls
-#### [View Demo on YouTube](https://www.youtube.com/watch?v=Ivm3o5bG-fI)
+#### This is a 3D generic N*N Rubik's cube simulation and AI solver program. It supports any N-dimension cube, with graphical and Command-Line interface controls
+#### [View Demo on YouTube](https://youtu.be/F2-AvgGIDos)
 ###### See also
 [Fourier Series Simulation](https://github.com/ChauhanRohan-RC/Fourier-Series.git)  
 [RSA Encryptor](https://github.com/ChauhanRohan-RC/RSA-Encryptor.git)  
 [Online Multiplayer Ping-Pong AI](https://github.com/ChauhanRohan-RC/Ping-Pong-AI.git)
 
-![10x10 Cube](graphics/cube_10x10_scrambled.png)
+![Cover](graphics/thumb.png)
 
-## Features
+## Algorithm
 * _Deep Neural Network_ (DNN) trained using _Stochastic Gradient Descent_ over millions of possible states. 
 * Kociemba [2-Phase Algorithm](http://kociemba.org/math/imptwophase.htm) is used to generate on-the-fly data for training and testing
-* Animated moves, Free and Clamped Camera modes in a 3D space, idle state levitation, stickers with lighting effects. 
-* Immersive Ui and Command Line control
+* Can solve a 3x3 cube under 20 moves in less than 1 second
 
 ![3x3 Cube Solved](graphics/cube_3x3_solved.png)
+
+## Features
+* Create and simulate any N*N cube in 3D space
+* Both graphical and Command Line interface controls
+* Move features
+  * Inner layer moves
+  * Clockwise, anticlockwise and 180° rotation moves
+  * Reverse and undo applied moves
+  * Apply Multiple moves at once, including outer and inner layer moves
+* Scramble, solve, translate and scale the cube with animations
+* Graphical features
+  * Animated moves
+  * Free and Clamped Camera modes in a 3D space
+  * idle state levitation
+  * stickers with 3D lighting effects
+
+![10x10 Cube](graphics/cube_10x10_scrambled.png)
 
 ## Usage
 * Install [Java](https://www.oracle.com/in/java/technologies/downloads/) on your computer and add it to the path 

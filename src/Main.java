@@ -26,7 +26,7 @@ public class Main extends PApplet implements Cube.Listener {
 
     @NotNull
     public static Dimension windowSize(int displayW, int displayH) {
-        return new Dimension(Math.round(displayW / 1.4f), Math.round(displayH / 1.4f));
+        return new Dimension(Math.round(displayW / 1.4f), Math.round(displayH / 1.3f));
     }
 
     @NotNull
@@ -413,7 +413,7 @@ public class Main extends PApplet implements Cube.Listener {
     }
 
     public float getCubeZoom() {
-        return mFreeCam ? 1 : cubeZoom;
+        return mFreeCam? 1 : cubeZoom;
     }
 
     public void incCubeZoom() {

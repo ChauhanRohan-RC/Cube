@@ -1,6 +1,6 @@
 
-............................. 3D N*N Rubik's Cube AI ..............................
-This is a 3D Rubik's cube visualizer and solver program. It supports any N*N*N dimension cube, with UI and Command-Line controls
+.......... Rubik's Cube Solver-AI ..........
+This is a 3D generic N*N Rubik's cube simulator and solver program. It supports any N*N*N dimension cube, with both graphical and Command-Line controls
 
 # MOVES (Clockwise)
   U: Up
@@ -22,11 +22,11 @@ This is a 3D Rubik's cube visualizer and solver program. It supports any N*N*N d
      ex Turn 1st and 3rd slices from right in a 5*5 cube -> R[0,2]
 
 # COMMANDS
+ -> enter moves sequence (moves separated by space)
  -> n [dimension] -> set cube dimension
  -> scramble [moves]: scramble with given no of moves
  -> solve: Solve/Apply solution (Only for 3*3 cube)
  -> reset [what]: Reset [cube, zoom]
  -> undo: undo last move
  -> finish [c]: finish/cancel animating and pending moves
- -> enter moves sequence (moves separated by space)
  -> exit/quit: quit
