@@ -180,6 +180,8 @@ public class Test {
 
 
     public static void main(String[] args) {
+
+        println("%");
 //        final Cube cube = new Cube(5);
 //
 //        // scramble

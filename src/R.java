@@ -54,11 +54,13 @@ public class R {
              -> enter moves sequence (moves separated by space)
              -> n [dimension] -> set cube dimension
              -> scramble [moves]: scramble with given no of moves
-             -> solve: Solve/Apply solution (Only for 3*3 cube)
-             -> reset [what]: Reset [cube, zoom]
              -> undo: undo last move
-             -> finish [c]: finish/cancel animating and pending moves
-             -> exit/quit: quit
+             -> finish [c]: finish / cancel animating and pending moves
+             -> solve: Solve / Apply solution (Only for 3*3 cube)
+             -> reset [what]: Reset [cube, zoom]
+             -> speed [+ / - / percent]: Increase / Decrease / Set move animation speed
+             -> interpolator [key]: Set move animation interpolator
+             -> exit / quit: quit
             """;
 
     public static final String DES_SHELL_MOVES =
@@ -109,26 +111,27 @@ public class R {
     public static final String DES_CONTROLS_SOLVE =
             """
             S..................Solve
-            SPACE.......Scramble
+            SPACE......Scramble
             A..................Animate Moves
             X..................Finish Moves
-            SHIFT-X....Cancel Moves
-            SHIFT-Q....Reset Cube
-            N/M............Change Cube
+            SHIFT X....Cancel Moves
+            SHIFT Q....Reset Cube
+            N / M..........Change Cube
             """;
 
     public static final String DES_CONTROLS_CUBE_CAMERA =
             """
             Up.....................Rotate Up
-            Down..........Rotate Down
+            Down.........Rotate Down
             Left.................Rotate Left
             Right............Rotate Right
-            CTRL-Left............Roll Left
-            CTRL-Right.......Roll Right
+            CTRL-Left...........Roll Left
+            CTRL-Right......Roll Right
 
-            +/-................Zoom In/Out
-            Q................................Reset
-            C.............Toggle Controls
+            +/-...............Zoom In/Out
+            SHIFT +/-...............Speed
+            Q.................................Reset
+            C...........Toggle Controls
             """;
 
     // Readme

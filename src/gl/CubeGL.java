@@ -1,6 +1,7 @@
 package gl;
 
 import gl.animation.Animator;
+import gl.animation.Interpolator;
 import model.cube.Cube;
 import model.cube.CubeI;
 import model.cubie.Cubie;
@@ -13,6 +14,7 @@ import util.CollectionUtil;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 
@@ -54,6 +56,14 @@ public class CubeGL implements Drawable, MoveGL.Listener {
     private final LinkedList<MoveGL> mCurMoves = new LinkedList<>();        // like a queue
     @NotNull
     private final LinkedList<MoveGL> mPendingMoves = new LinkedList<>();            // like a queue
+
+    @Nullable
+    private Consumer<MoveGL> mMoveGlConfigurer;
+
+    @Nullable
+    private Interpolator mMoveGlInterpolatorOverride;
+
+    private int mMoveQuarterDurationMs = GLConfig.MOVE_QUARTER_DURATION_MS_DEFAULT;
 
     public CubeGL(@NotNull Cube cube) {
         this.cube = cube;
@@ -190,9 +200,114 @@ public class CubeGL implements Drawable, MoveGL.Listener {
 //        applyMove(moveGL, GLConfig.DEFAULT_APPLY_MOVE_NOW);
 //    }
 
+    @Nullable
+    public Consumer<MoveGL> getMoveGlConfigurer() {
+        return mMoveGlConfigurer;
+    }
+
+    protected void onMoveGlConfigurerChanged(@Nullable Consumer<MoveGL> old, @Nullable Consumer<MoveGL> _new) {
+
+    }
+
+    public CubeGL setMoveGlConfigurer(@Nullable Consumer<MoveGL> moveGlConfigurer) {
+        if (mMoveGlConfigurer != moveGlConfigurer) {
+            final Consumer<MoveGL> old = mMoveGlConfigurer;
+            mMoveGlConfigurer = moveGlConfigurer;
+            onMoveGlConfigurerChanged(old, moveGlConfigurer);
+        }
+
+        return this;
+    }
+
+    @Nullable
+    public Interpolator getMoveGlInterpolatorOverride() {
+        return mMoveGlInterpolatorOverride;
+    }
+
+    protected void onMoveGlInterpolatorOverrideChanged(@Nullable Interpolator old, @Nullable Interpolator _new) {
+
+    }
+
+    public boolean setMoveGlInterpolatorOverride(@Nullable Interpolator moveGlInterpolatorOverride) {
+        if (mMoveGlInterpolatorOverride == moveGlInterpolatorOverride) {
+            return false;
+        }
+
+        final Interpolator old = mMoveGlInterpolatorOverride;
+        mMoveGlInterpolatorOverride = moveGlInterpolatorOverride;
+        onMoveGlInterpolatorOverrideChanged(old, moveGlInterpolatorOverride);
+        return true;
+    }
+
+
+    public int getMoveQuarterDurationMs() {
+        return mMoveQuarterDurationMs;
+    }
+
+    public float getMoveQuarterDurationPercent() {
+        return GLConfig.moveQuarterDurationMsToPercent(mMoveQuarterDurationMs);
+    }
+
+    /**
+     * @return new duration ms
+     * */
+    public int setMoveQuarterDurationMs(int moveQuarterDurationMs) {
+        mMoveQuarterDurationMs = GLConfig.constraintMoveQuarterDurationMs(moveQuarterDurationMs);
+        return mMoveQuarterDurationMs;
+    }
+
+    /**
+     * @return new duration percent
+     * */
+    public float setMoveQuarterDurationPercent(float percent) {
+        mMoveQuarterDurationMs = GLConfig.percentToMoveQuarterDurationMs(percent);
+        return getMoveQuarterDurationPercent();
+    }
+
+    /**
+     * @return new duration percent
+     * */
+    public float changeMoveQuarterDurationPercentBy(float percentDelta) {
+        return setMoveQuarterDurationPercent(getMoveQuarterDurationPercent() + percentDelta);
+    }
+
+    /**
+     * @return new duration percent
+     * */
+    public float incMoveQuarterDuration(boolean continuous) {
+        return changeMoveQuarterDurationPercentBy(continuous? GLConfig.MOVE_QUARTER_SPEED_PERCENT_CONTINUOUS_INCREMENT: GLConfig.moveQuarterDurationMsIncPercent(getMoveQuarterDurationPercent()));
+    }
+
+    /**
+     * @return new duration percent
+     * */
+    public float decMoveQuarterDuration(boolean continuous) {
+        return changeMoveQuarterDurationPercentBy(-(continuous? GLConfig.MOVE_QUARTER_SPEED_PERCENT_CONTINUOUS_INCREMENT: GLConfig.moveQuarterDurationMsDecPercent(getMoveQuarterDurationPercent())));
+    }
+
+
+
+    /**
+     * Configures a newly created MoveGL object
+     * */
+    protected void initMoveGl(@NotNull MoveGL moveGL) {
+        final Consumer<MoveGL> config = mMoveGlConfigurer;
+        if (config != null) {
+            config.accept(moveGL);
+        }
+
+        final Interpolator interp = mMoveGlInterpolatorOverride;
+        if (interp != null) {
+            moveGL.setInterpolator(interp);
+        }
+
+        moveGL.setQuarterDurationMs(mMoveQuarterDurationMs);
+    }
+
     public void applyMove(@NotNull Move move, boolean saveInStack, boolean now) {
         if (mAnimateMoves) {
             final MoveGL m = new MoveGL(move);
+            initMoveGl(m);
             m.setSaveInStack(saveInStack);
 
             if (now || (mCurMoves.isEmpty() && mPendingMoves.isEmpty())) {

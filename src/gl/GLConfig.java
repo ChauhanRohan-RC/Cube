@@ -45,8 +45,42 @@ public class GLConfig {
 
     public static final boolean DEFAULT_ANIMATE_MOVES = true;
     public static final boolean DEFAULT_MOVE_USE_NORMALIZED_QUARTERS = false;
-    public static final long DEFAULT_MOVE_QUARTER_DURATION_MS = 280;
     public static final Interpolator DEFAULT_MOVE_INTERPOLATOR = Interpolator.ACCELERATE_DECELERATE;
+
+    public static final int MOVE_QUARTER_DURATION_MS_MIN = 80;
+    public static final int MOVE_QUARTER_DURATION_MS_MAX = 2500;
+    public static final int MOVE_QUARTER_DURATION_MS_DEFAULT = 280;
+
+    public static int constraintMoveQuarterDurationMs(int durationMs) {
+        return PApplet.constrain(durationMs, MOVE_QUARTER_DURATION_MS_MIN, MOVE_QUARTER_DURATION_MS_MAX);
+    }
+
+    public static float moveQuarterDurationMsToPercent(int durationMs) {
+        return PApplet.norm(constraintMoveQuarterDurationMs(durationMs), MOVE_QUARTER_DURATION_MS_MIN, MOVE_QUARTER_DURATION_MS_MAX) * 100;
+    }
+
+    public static int percentToMoveQuarterDurationMs(float percent) {
+        return (int) PApplet.lerp(MOVE_QUARTER_DURATION_MS_MIN, MOVE_QUARTER_DURATION_MS_MAX, PApplet.constrain(percent / 100f, 0, 1));
+    }
+
+    public static final float MOVE_QUARTER_SPEED_PERCENT_CONTINUOUS_INCREMENT = 0.25f;        // percent
+
+    public static float moveQuarterDurationMsIncPercent(float currentPercent) {
+        return 5;
+    }
+
+    public static float moveQuarterDurationMsDecPercent(float currentPercent) {
+        return 5;
+    }
+
+    public static float convertDurationAndSpeedPercent(float durationPercent) {
+        return 100 - durationPercent;
+    }
+
+//    public static int moveQuarterDurationMsWithDeltaPercent(int durationMs, float deltaPercentage) {
+//        return constraintMoveQuarterDurationMs((int) (durationMs + (Math.signum(deltaPercentage) * percentToMoveQuarterDurationMs(Math.abs(deltaPercentage)))));
+//    }
+
 
     public static final boolean DEFAULT_APPLY_MOVE_NOW = true;      // single move
     public static final boolean DEFAULT_APPLY_SEQUENCE_NOW = false;
@@ -91,6 +125,11 @@ public class GLConfig {
     public static final boolean SHOW_CUR_MOVE = true;
     public static final float CUR_MOVE_TEXT_SIZE = 0.062f;
     public static final Color FG_CUR_MOVE = FG_DARK;
+
+    // SPEED etc
+    public static final boolean SHOW_SEC_STATUS = true;
+    public static final float SEC_STATUS_TEXT_SIZE = 0.018f;
+    public static final Color FG_SEC_STATUS = FG_DARK;
 
     public static final boolean SHOW_LAST_MOVE = true;
     public static final float LAST_MOVE_TEXT_SIZE = 0.02f;
@@ -179,6 +218,11 @@ public class GLConfig {
         return null;
     }
 
+    @Nullable
+    public static String getSecStatusText(float moveSpeedPercent) {
+        return "Speed: " + formatPercentage(moveSpeedPercent) + "%";
+    }
+
 
     @NotNull
     public static String concatKeyBinding(@NotNull String prefix, @Nullable String suffix, @Nullable String keyBinding) {
@@ -198,5 +242,14 @@ public class GLConfig {
     @Nullable
     public static String getCubeLockedText(boolean cubeLocked) {
         return cubeLocked? "LOCKED": null;
+    }
+
+    @NotNull
+    public static String formatPercentage(float p) {
+        if (p == (int) p) {
+            return String.valueOf((int) p) + "%";
+        }
+
+        return String.format("%.2f%%", p);
     }
 }

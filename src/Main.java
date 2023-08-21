@@ -1,6 +1,6 @@
 import gl.CubeGL;
 import gl.GLConfig;
-import gl.animation.FloatAnimator;
+import gl.animation.*;
 import model.Axis;
 import model.Point3DF;
 import model.cube.Cube;
@@ -21,6 +21,7 @@ import util.Util;
 import java.awt.*;
 import java.util.List;
 import java.util.Scanner;
+import java.util.StringJoiner;
 
 public class Main extends PApplet implements Cube.Listener {
 
@@ -187,6 +188,10 @@ public class Main extends PApplet implements Cube.Listener {
         return GLConfig.getStatusText(this, mSolving, mCurSolution, "S");
     }
 
+    public String getSecStatusText() {
+        return GLConfig.getSecStatusText(getMoveSpeedPercent());
+    }
+
 
 
     /* Setup and Drawing */
@@ -244,8 +249,22 @@ public class Main extends PApplet implements Cube.Listener {
         /* Handle Keys */
         if (keyPressed && mKeyEvent != null) {
             switch (mKeyEvent.getKeyCode()) {
-                case java.awt.event.KeyEvent.VK_DEAD_CEDILLA, java.awt.event.KeyEvent.VK_PLUS -> incCubeZoom();
-                case java.awt.event.KeyEvent.VK_DEAD_OGONEK, java.awt.event.KeyEvent.VK_MINUS -> decCubeZoom();
+                case java.awt.event.KeyEvent.VK_DEAD_CEDILLA, java.awt.event.KeyEvent.VK_PLUS -> {
+                    if (mKeyEvent.isShiftDown()) {
+                        incMoveSpeed(true);
+                    } else {
+                        incCubeZoom();
+                    }
+                }
+
+                case java.awt.event.KeyEvent.VK_DEAD_OGONEK, java.awt.event.KeyEvent.VK_MINUS -> {
+                    if (mKeyEvent.isShiftDown()) {
+                        decMoveSpeed(true);
+                    } else {
+                        decCubeZoom();
+                    }
+                }
+
 //                case java.awt.event.KeyEvent.VK_N -> incN();
 //                case java.awt.event.KeyEvent.VK_M -> decN();
             }
@@ -381,6 +400,19 @@ public class Main extends PApplet implements Cube.Listener {
             }
         }
 
+        // Secondary Status
+        if (GLConfig.SHOW_SEC_STATUS) {
+            final String secStatus = getSecStatusText();
+            if (secStatus != null) {
+                pushStyle();
+                fill(GLConfig.FG_SEC_STATUS.getRGB());
+                textSize(getTextSize(GLConfig.SEC_STATUS_TEXT_SIZE));
+                textAlign(RIGHT, BOTTOM);
+                text(secStatus, width - h_offset, height - statusTextSize - v_offset * 2);
+                popStyle();
+            }
+        }
+
         // Cur Move (MIDDLE)
         if (GLConfig.SHOW_CUR_MOVE) {
             final Move curMove = cubeGL.getRecentRunningMove();
@@ -426,6 +458,26 @@ public class Main extends PApplet implements Cube.Listener {
 
     public void resetCubeZoom() {
         setCubeZoom(1);
+    }
+
+    public float incMoveSpeed(boolean continuous) {
+        return GLConfig.convertDurationAndSpeedPercent(cubeGL.decMoveQuarterDuration(continuous));
+    }
+
+    public float decMoveSpeed(boolean continuous) {
+        return GLConfig.convertDurationAndSpeedPercent(cubeGL.incMoveQuarterDuration(continuous));
+    }
+
+    public float getMoveSpeedPercent() {
+        return GLConfig.convertDurationAndSpeedPercent(cubeGL.getMoveQuarterDurationPercent());
+    }
+
+    public float setMoveSpeedPercent(float percent) {
+        return GLConfig.convertDurationAndSpeedPercent(cubeGL.setMoveQuarterDurationPercent(GLConfig.convertDurationAndSpeedPercent(percent)));
+    }
+
+    public float changeMoveSpeedPercentBy(float percentDelta) {
+        return GLConfig.convertDurationAndSpeedPercent(cubeGL.changeMoveQuarterDurationPercentBy(GLConfig.convertDurationAndSpeedPercent(percentDelta)));
     }
 
     public void setShowControls(boolean showControls) {
@@ -576,9 +628,12 @@ public class Main extends PApplet implements Cube.Listener {
         cubeGL.finishAllMoves(cancel);
     }
 
+    public boolean setMoveGlInterpolator(@Nullable Interpolator interpolator) {
+        return cubeGL.setMoveGlInterpolatorOverride(interpolator);
+    }
+
 
     /* Solve */
-
 
     public void doSolveWorker() {
         if (mSolving)
@@ -801,6 +856,57 @@ public class Main extends PApplet implements Cube.Listener {
     }
 
 
+    private enum InterpolatorInfo {
+        DEFAULT("default", "Default", null),
+        LINEAR("linear", "Linear", Interpolator.LINEAR),
+        BOUNCE("bounce", "Bounce", Interpolator.BOUNCE),
+
+        ACCELERATE("acc", "Accelerate", new AccelerateInterpolator()),
+        DECELERATE("dec", "Decelerate", new DecelerateInterpolator()),
+        ACCELERATE_DECELERATE("acd", "Accelerate Decelerate", Interpolator.ACCELERATE_DECELERATE),
+
+        ANTICIPATE("anticipate", "Anticipate", new AnticipateInterpolator()),
+        OVERSHOOT("overshoot", "Overshoot", new AnticipateOvershootInterpolator())
+        ;
+
+        @NotNull
+        public final String key;
+        @NotNull
+        public final String displayName;
+        @Nullable
+        public final Interpolator interpolator;
+
+        InterpolatorInfo(@NotNull String key, @NotNull String displayName, @Nullable Interpolator interpolator) {
+            this.key = key;
+            this.displayName = displayName;
+            this.interpolator = interpolator;
+        }
+
+        public static String getDisplayInfo() {
+            final StringJoiner sj = new StringJoiner("\n");
+
+            for (InterpolatorInfo info: values()) {
+                sj.add("\t" + info.key + " -> " + info.displayName);
+            }
+
+            return sj.toString();
+        }
+
+        @Nullable
+        public static InterpolatorInfo fromKey(String key) {
+            if (key == null || key.isEmpty())
+                return null;
+
+            for (InterpolatorInfo info: values()) {
+                if (info.key.equals(key))
+                    return info;
+            }
+
+            return null;
+        }
+    }
+
+
     public static void main(String[] args) {
 //        R.createShellInstructionsReadme();
 
@@ -808,37 +914,59 @@ public class Main extends PApplet implements Cube.Listener {
         PApplet.runSketch(concat(new String[]{app.getClass().getName()}, args), app);
 
         println(R.SHELL_INSTRUCTIONS);
-        Scanner sc = new Scanner(System.in);
+        Scanner sc;
         boolean running = true;
 
         do {
+            sc = new Scanner(System.in);
             print(R.SHELL_ROOT);
+
             final String in = sc.nextLine();
             if (in.isEmpty())
                 continue;
 
             if (in.startsWith("n")) {
+                final String rest = in.substring(1).strip();
+                final Runnable usagePrinter = () -> Util.v("", "Usage: n <dimension>\nDimension should be in range [2, " + CubeI.DEFAULT_MAX_N + "]");
+
+                if (rest.isEmpty()) {
+                    usagePrinter.run();
+                    continue;
+                }
+
                 try {
-                    final int n = Integer.parseInt(in.substring(1).replace(" ", ""));
+                    final int n = Integer.parseInt(rest);
                     if (n < 2 || n > CubeI.DEFAULT_MAX_N) {
                         Util.e(R.SHELL_DIMENSION, "Cube dimension must be >= 2 and <= " + CubeI.DEFAULT_MAX_N);
+                        usagePrinter.run();
                     } else {
                         app.setN(n);
                     }
                 } catch (NumberFormatException ignored) {
                     Util.e(R.SHELL_DIMENSION, "Cube dimension must be an integer, command: n [dim]");
+                    usagePrinter.run();
                 }
             } else if (in.startsWith("scramble")) {
+                final String rest = in.substring(8).strip();
+                final Runnable usagePrinter = () -> Util.v("", "Usage: scramble <num_moves>");
                 int n = CubeI.DEFAULT_SCRAMBLE_MOVES;
-                try {
-                    final int n2 = Integer.parseInt(in.substring(8).replace(" ", ""));
-                    if (n2 <= 0) {
-                        Util.w(R.SHELL_SCRAMBLE, "Scramble moves must be positive integer, command: scramble [moves]");
-                    } else {
-                        n = n2;
+
+                if (rest.isEmpty()) {
+                    Util.v(R.SHELL_SCRAMBLE, "Using default scramble moves: " + n);
+                    usagePrinter.run();
+                } else {
+                    try {
+                        final int n2 = Integer.parseInt(rest);
+                        if (n2 <= 0) {
+                            Util.w(R.SHELL_SCRAMBLE, "Scramble moves must be positive integer, falling back to default scramble moves: " + n);
+                            usagePrinter.run();
+                        } else {
+                            n = n2;
+                        }
+                    } catch (NumberFormatException ignored) {
+                        Util.w(R.SHELL_SCRAMBLE, "Scramble moves must be positive integer, falling back to default scramble moves: " + n);
+                        usagePrinter.run();
                     }
-                } catch (NumberFormatException ignored) {
-                    Util.w(R.SHELL_SCRAMBLE, "Scramble moves must be positive integer, command: scramble [moves]");
                 }
 
                 app.scramble(n);
@@ -854,7 +982,72 @@ public class Main extends PApplet implements Cube.Listener {
                 app.solve();
             } else if (in.equals("undo")) {
                 app.undoLastMove();
-            } else if (in.equals("quit") || in.equals("exit")) {
+            } else if (in.startsWith("speed")) {
+                final String rest = in.substring(5).strip();
+                final Runnable usagePrinter = () -> Util.v("", "Usage: speed <option>\nAvailable options\n\t+ : Increase speed\n\t- : Decrease Speed\n\t<percent> : set speed percentage in range [0, 100]");
+
+                if (rest.isEmpty()) {
+                    Util.v("", "Current Speed: " + GLConfig.formatPercentage(app.getMoveSpeedPercent()));
+                    usagePrinter.run();
+                    continue;
+                }
+
+                final float newPer;
+
+                if (rest.equals("+")) {
+                    newPer = app.incMoveSpeed(false);
+                } else if (rest.equals("-")) {
+                    newPer = app.decMoveSpeed(false);
+                } else {
+                    try {
+                        final float in_per = Float.parseFloat(rest);
+                        if (in_per < 0 || in_per > 100) {
+                            Util.e(R.SHELL_MOVE, "Move speed should be in range [0, 100], given: " + GLConfig.formatPercentage(in_per));
+                            usagePrinter.run();
+                            continue;
+                        }
+
+                        newPer = app.setMoveSpeedPercent(in_per);
+                    } catch (NumberFormatException ignored) {
+                        Util.e(R.SHELL_MOVE, "Move speed should be a number in range [0, 100], given: " + rest);
+                        usagePrinter.run();
+                        continue;
+                    }
+                }
+
+                Util.v(R.SHELL_MOVE, "Move speed set to " + GLConfig.formatPercentage(newPer) + "%");
+            }
+
+            else if (in.startsWith("intp") || in.startsWith("interp") || in.startsWith("interpolator")) {
+                String key = "";
+                // checks with spaces
+                if (in.startsWith("intp ")) {
+                    key = in.substring(5);
+                } else if (in.startsWith("interp ")) {
+                    key = in.substring(7);
+                } else if (in.startsWith("interpolator "))  {
+                    key = in.substring(13);
+                }
+
+                final Runnable usagePrinter = () -> Util.v("", "Usage: interpolator <interpolator_key>\nAvailable Interpolators (key -> name)\n" + InterpolatorInfo.getDisplayInfo());
+                if (key.isEmpty()) {
+                    usagePrinter.run();
+                    continue;
+                }
+
+                final InterpolatorInfo info = InterpolatorInfo.fromKey(key);
+                if (info == null) {
+                    Util.e(R.SHELL_MOVE, "Invalid interpolator key <" + key + ">");
+                    usagePrinter.run();
+                    continue;
+                }
+
+                final boolean changed = app.setMoveGlInterpolator(info.interpolator);
+                final String msg = changed? "Move animation interpolator changed to: " + info.displayName: "Move animation interpolator already set to: " + info.displayName;
+                Util.w(R.SHELL_MOVE, msg);
+            }
+
+            else if (in.equals("quit") || in.equals("exit")) {
                 running = false;
                 app.exit();
             } else {
@@ -867,8 +1060,6 @@ public class Main extends PApplet implements Cube.Listener {
                     Util.e(R.SHELL_MOVE, e.getMessage());
                 }
             }
-
-            sc = new Scanner(System.in);
         } while (running);
     }
 

@@ -25,8 +25,10 @@ This is a 3D generic N*N Rubik's cube simulator and solver program. It supports 
  -> enter moves sequence (moves separated by space)
  -> n [dimension] -> set cube dimension
  -> scramble [moves]: scramble with given no of moves
- -> solve: Solve/Apply solution (Only for 3*3 cube)
- -> reset [what]: Reset [cube, zoom]
  -> undo: undo last move
- -> finish [c]: finish/cancel animating and pending moves
- -> exit/quit: quit
+ -> finish [c]: finish / cancel animating and pending moves
+ -> solve: Solve / Apply solution (Only for 3*3 cube)
+ -> reset [what]: Reset [cube, zoom]
+ -> speed [+ / - / percent]: Increase / Decrease / Set move animation speed
+ -> interpolator [key]: Set move animation interpolator
+ -> exit / quit: quit

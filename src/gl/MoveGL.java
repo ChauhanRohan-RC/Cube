@@ -33,7 +33,7 @@ public class MoveGL extends FloatAnimator {
         this.move = move;
         mQuarters = useNormalizedQuarters? move.normalizedQuarters: move.quarters;
 
-        setQuarterDurationMs(GLConfig.DEFAULT_MOVE_QUARTER_DURATION_MS);        // set default duration
+        setQuarterDurationMs(GLConfig.MOVE_QUARTER_DURATION_MS_DEFAULT);        // set default duration
         setDefaultInterpolator(GLConfig.DEFAULT_MOVE_INTERPOLATOR);             // set default interpolator
     }
 
