@@ -30,7 +30,7 @@ public class R {
     public static final Path FONT_PD_SANS_MEDIUM = DIR_FONT.resolve("product_sans_medium.ttf");
 
 
-    public static final String APP_NAME = "Rubik's Cube Solver-AI";
+    public static final String APP_NAME = "Rubik's Cube Simulation and Solver";
 
     // Shell
 
@@ -87,7 +87,7 @@ public class R {
 
     public static final String SHELL_INSTRUCTIONS =
             "\n.......... "+ R.APP_NAME +" ..........\n" +
-            "This is a 3D generic N*N Rubik's cube simulator and solver program. It supports any N*N*N dimension cube, with both graphical and Command-Line controls\n\n"
+            "This is a 3D generic NxNxN Rubik's cube simulator and solver program. It supports any N-dimensional cube, with both graphical and Command-Line controls\n\n"
             + DES_SHELL_MOVES + "\n"
             + DES_SHELL_COMMANDS;
 

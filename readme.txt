@@ -1,6 +1,6 @@
 
-.......... Rubik's Cube Solver-AI ..........
-This is a 3D generic N*N Rubik's cube simulator and solver program. It supports any N*N*N dimension cube, with both graphical and Command-Line controls
+.......... Rubik's Cube Simulation and Solver ..........
+This is a 3D generic NxNxN Rubik's cube simulator and solver program. It supports any N-dimensional cube, with both graphical and Command-Line controls
 
 # MOVES (Clockwise)
   U: Up

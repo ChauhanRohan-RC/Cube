@@ -30,6 +30,55 @@
 
 ![3x3 Cube Solved](graphics/cube_3x3_solved.png)
 
+# Features
+
+* Create and interact with any NxNxN cube in 3D space
+* Both graphical and Command Line interface controls
+
+![18x18 Cube](graphics/cube_18x18_scrambled.png)
+
+### Move Features
+
+* Inner layer moves
+* Clockwise, anticlockwise and 180° rotation moves
+* Reverse and undo applied moves
+* Apply Multiple moves at once, including outer and inner layer moves
+* Scramble the cube with given number of random moves
+
+### Graphical Features
+
+* Free and Clamped Camera modes in a 3D space
+* Translate, Scale, Yaw, Pitch and Roll the cube with animations
+* idle state levitation: cube will "**_breath_**" when idle
+* stickers with 3D lighting effects
+
+### Animation Features
+
+* Finish or Cancel pending animations
+* Control animation speed (Increase / Decrease / Set Percentage from console)
+* Set move animation interpolator. Available Interpolators are
+
+| Key        | Interpolator                       | Description                                                                                                         |
+|------------|------------------------------------|---------------------------------------------------------------------------------------------------------------------|
+| default    | Default                            | Uses Default Interpolator                                                                                           |
+| linear     | Linear Interpolator                | Interpolates linearly between start and end states                                                                  |
+| bounce     | Bounce Interpolator                | Change bounces at the end                                                                                           |
+| acc        | Accelerate Interpolator            | Rate of change starts out slowly and then accelerates towards the end                                               |
+| dec        | Decelerate Interpolator            | Rate of change starts out quickly and then decelerates as the end approaches                                        |
+| acd        | Accelerate Decelerate Interpolator | Rate of change starts and ends slowly but accelerates through the middle                                            |
+| anticipate | Anticipate Interpolator            | Change starts backward then flings forward                                                                          |
+| overshoot  | Overshoot Interpolator             | Change starts backward then flings forward and overshoots the target value and finally goes back to the final value |
+
+![5x5 Cube Scramble](graphics/cube_5x5_scrambled.png)
+
+## Usage
+
+* Install [Java](https://www.oracle.com/in/java/technologies/downloads/) on your computer and add it to the path
+* Clone this repository  
+  `git clone https://github.com/ChauhanRohan-RC/Cube.git`
+* Navigate to [out/artifacts/cube_jar](out/artifacts/cube_jar) folder and run [launch.bat](out/artifacts/cube_jar/launch.bat).
+* Alternatively, open up the terminal and run `java -jar cube.jar`
+
 ## Moves (Clockwise)
 
 * U: Up
@@ -73,56 +122,7 @@
 * `reset zoom` : Reset Ui zoom
 * `exit/quit`: quit
 
-![3x3 Cube Move](graphics/cube_3x3_front_move.png)
-
-# Features
-
-* Create and interact with any NxNxN cube in 3D space
-* Both graphical and Command Line interface controls
-
-### Move Features
-
-* Inner layer moves
-* Clockwise, anticlockwise and 180° rotation moves
-* Reverse and undo applied moves
-* Apply Multiple moves at once, including outer and inner layer moves
-* Scramble the cube with given number of random moves
-
-### Graphical Features
-
-* Free and Clamped Camera modes in a 3D space
-* Translate, Scale, Yaw, Pitch and Roll the cube with animations
-* idle state levitation: cube will "**_breath_**" when idle
-* stickers with 3D lighting effects
-
-### Animation Features
-
-* Finish or Cancel pending animations
-* Control animation speed (Increase / Decrease / Set Percentage from console)
-* Set move animation interpolator. Available Interpolators are
-
-| Key        | Interpolator                       | Description                                                                                                         |
-|------------|------------------------------------|---------------------------------------------------------------------------------------------------------------------|
-| default    | Default                            | Uses Default Interpolator                                                                                           |
-| linear     | Linear Interpolator                | Interpolates linearly between start and end states                                                                  |
-| bounce     | Bounce Interpolator                | Change bounces at the end                                                                                           |
-| acc        | Accelerate Interpolator            | Rate of change starts out slowly and then accelerates towards the end                                               |
-| dec        | Decelerate Interpolator            | Rate of change starts out quickly and then decelerates as the end approaches                                        |
-| acd        | Accelerate Decelerate Interpolator | Rate of change starts and ends slowly but accelerates through the middle                                            |
-| anticipate | Anticipate Interpolator            | Change starts backward then flings forward                                                                          |
-| overshoot  | Overshoot Interpolator             | Change starts backward then flings forward and overshoots the target value and finally goes back to the final value |
-
-![10x10 Cube](graphics/cube_10x10_scrambled.png)
-
-## Usage
-
-* Install [Java](https://www.oracle.com/in/java/technologies/downloads/) on your computer and add it to the path
-* Clone this repository  
-  `git clone https://github.com/ChauhanRohan-RC/Cube.git`
-* Navigate to [out/artifacts/cube_jar](out/artifacts/cube_jar) folder and run [launch.bat](out/artifacts/cube_jar/launch.bat).  
-* Alternatively, open up the terminal and run `java -jar cube.jar`
-
-![5x5 Cube Scramble](graphics/cube_5x5_scrambled.png)
+![5x5 Cube Scramble](graphics/cube_10x10_scrambled.png)
 
 ## Connect on
 [GitHub](https://github.com/ChauhanRohan-RC)  
