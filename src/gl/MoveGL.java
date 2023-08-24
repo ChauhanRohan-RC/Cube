@@ -5,7 +5,7 @@ import gl.animation.FloatAnimator;
 import model.Axis;
 import model.cubie.Move;
 import org.jetbrains.annotations.NotNull;
-import util.Listeners;
+import util.live.Listeners;
 
 
 public class MoveGL extends FloatAnimator {
@@ -83,6 +83,10 @@ public class MoveGL extends FloatAnimator {
 
     public final boolean removeListener(@NotNull Listener listener) {
         return mListeners.removeListener(listener);
+    }
+
+    public final void ensureListener(@NotNull Listener listener) {
+        mListeners.ensureListener(listener);
     }
 
     protected void onStarted(boolean resumed) {

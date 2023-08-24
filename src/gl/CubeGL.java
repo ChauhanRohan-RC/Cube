@@ -9,7 +9,7 @@ import model.cubie.Move;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import processing.core.PApplet;
-import util.CollectionUtil;
+import util.misc.CollectionUtil;
 
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -157,7 +157,7 @@ public class CubeGL implements Drawable, MoveGL.Listener {
 
     private void doStartMove(@NotNull MoveGL moveGL) {
         moveGL.reset();
-        moveGL.addListener(this);
+        moveGL.ensureListener(this);
         mCurMoves.addLast(moveGL);
         moveGL.start();
     }
@@ -182,6 +182,10 @@ public class CubeGL implements Drawable, MoveGL.Listener {
         if (mCurMoves.isEmpty()) {
             startNextPendingMove();
         }
+    }
+
+    private void forEachPending(@NotNull Consumer<MoveGL> action) {
+        mPendingMoves.forEach(action);
     }
 
 
@@ -225,7 +229,7 @@ public class CubeGL implements Drawable, MoveGL.Listener {
     }
 
     protected void onMoveGlInterpolatorOverrideChanged(@Nullable Interpolator old, @Nullable Interpolator _new) {
-
+        forEachPending(m -> m.setInterpolator(_new));
     }
 
     public boolean setMoveGlInterpolatorOverride(@Nullable Interpolator moveGlInterpolatorOverride) {
@@ -248,11 +252,22 @@ public class CubeGL implements Drawable, MoveGL.Listener {
         return GLConfig.moveQuarterDurationMsToPercent(mMoveQuarterDurationMs);
     }
 
+
+    protected void onMoveQuarterDurationMsChanged(int oldMs, int newMs) {
+        forEachPending(m -> m.setQuarterDurationMs(newMs));
+    }
+
     /**
      * @return new duration ms
      * */
     public int setMoveQuarterDurationMs(int moveQuarterDurationMs) {
-        mMoveQuarterDurationMs = GLConfig.constraintMoveQuarterDurationMs(moveQuarterDurationMs);
+        final int oldMs = mMoveQuarterDurationMs;
+        final int newMs = GLConfig.constraintMoveQuarterDurationMs(moveQuarterDurationMs);
+        if (oldMs != newMs) {
+            mMoveQuarterDurationMs = newMs;
+            onMoveQuarterDurationMsChanged(oldMs, newMs);
+        }
+
         return mMoveQuarterDurationMs;
     }
 
@@ -260,8 +275,7 @@ public class CubeGL implements Drawable, MoveGL.Listener {
      * @return new duration percent
      * */
     public float setMoveQuarterDurationPercent(float percent) {
-        mMoveQuarterDurationMs = GLConfig.percentToMoveQuarterDurationMs(percent);
-        return getMoveQuarterDurationPercent();
+        return GLConfig.moveQuarterDurationMsToPercent(setMoveQuarterDurationMs(GLConfig.percentToMoveQuarterDurationMs(percent)));
     }
 
     /**

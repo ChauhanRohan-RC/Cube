@@ -15,8 +15,8 @@ import processing.core.PImage;
 import processing.event.KeyEvent;
 import processing.opengl.PJOGL;
 import solver.Solver;
-import util.CollectionUtil;
 import util.Util;
+import util.misc.CollectionUtil;
 
 import java.awt.*;
 import java.util.List;
@@ -97,7 +97,7 @@ public class Main extends PApplet implements Cube.Listener {
         }
 
         cubeGL = new CubeGL(cube);
-        cube.addListener(this);
+        onCubeChanged(null, cube);
     }
 
     public Main(int n) {
@@ -116,7 +116,15 @@ public class Main extends PApplet implements Cube.Listener {
         mCurSolution = null;
     }
 
-    protected void onCubeChanged(@NotNull Cube prevCube, @NotNull Cube newCube) {
+    protected void onCubeChanged(@Nullable Cube prevCube, @Nullable Cube newCube) {
+        if (prevCube != null) {
+            prevCube.removeListener(this);
+        }
+
+        if (newCube != null) {
+            newCube.ensureListener(this);
+        }
+
         invalidateSolution();
     }
 
@@ -135,12 +143,12 @@ public class Main extends PApplet implements Cube.Listener {
     }
 
 
-    public final boolean cubeLocked() {
+    public final boolean isCubeLocked() {
         return mSolving;
     }
 
     public final boolean setCube(@NotNull Cube cube) {
-        if (cubeLocked())
+        if (isCubeLocked())
             return false;
 
         final Cube prev = getCube();
@@ -154,7 +162,7 @@ public class Main extends PApplet implements Cube.Listener {
     }
 
     public final boolean setN(int n) {
-        if (cubeLocked())
+        if (isCubeLocked())
             return false;
         if (n < 2 || n > CubeI.DEFAULT_MAX_N || n == getN())
             return false;
@@ -163,7 +171,7 @@ public class Main extends PApplet implements Cube.Listener {
     }
 
     public final boolean resetCube() {
-        if (cubeLocked())
+        if (isCubeLocked())
             return false;
 
         final Cube c = getCube();
@@ -188,8 +196,14 @@ public class Main extends PApplet implements Cube.Listener {
         return GLConfig.getStatusText(this, mSolving, mCurSolution, "S");
     }
 
+    @Nullable
     public String getSecStatusText() {
         return GLConfig.getSecStatusText(getMoveSpeedPercent());
+    }
+
+    @Nullable
+    public String getCubeStateText() {
+        return GLConfig.getCubeStateText(getCube().n(), isCubeLocked());
     }
 
 
@@ -293,13 +307,13 @@ public class Main extends PApplet implements Cube.Listener {
             camera(o.x * 0.53f /* sin(radians(32)) */, o.y * -0.95f /* sin(radians(-72)) */, o.y * 1.6f /* 1/tan(radians(32)) */, 0, -curLevitation, 0, 0, 1, 0);
         }
 
-        if (GLConfig.CUBE_DRAW_AXISES) {
+        if (GLConfig.CUBE_DRAW_AXES) {
             pushStyle();
             stroke(GLConfig.COLOR_AXIS.getRGB());
             strokeWeight(2);
 
             final float plen = Math.max(width, height);
-            final float nlen = GLConfig.CUBE_DRAW_ONLY_POSITIVE_AXISES ? 0 : plen;
+            final float nlen = GLConfig.CUBE_DRAW_ONLY_POSITIVE_AXES ? 0 : plen;
 
             line(-nlen, 0, 0, plen, 0, 0);         // X
             line(0, nlen, 0, 0, -plen, 0);       // Y (invert)
@@ -321,7 +335,7 @@ public class Main extends PApplet implements Cube.Listener {
         final float v_offset = height / 96f;
 
         final float cameraModeTextSize = getTextSize(GLConfig.CAMERA_MODE_TEXT_SIZE);
-        final float cubeLockedTextSize = getTextSize(GLConfig.CUBE_LOCKED_TEXT_SIZE);
+        final float cubeLockedTextSize = getTextSize(GLConfig.CUBE_STATE_TEXT_SIZE);
 
         // Camera
         if (GLConfig.SHOW_CAMERA_MODE) {
@@ -333,15 +347,15 @@ public class Main extends PApplet implements Cube.Listener {
             popStyle();
         }
 
-        // Lock
-        if (GLConfig.SHOW_CUBE_LOCKED) {
-            final String lockText = GLConfig.getCubeLockedText(cubeLocked());
-            if (Util.notEmpty(lockText)) {
+        // Cube State
+        if (GLConfig.SHOW_CUBE_STATE) {
+            final String stateText = getCubeStateText();
+            if (Util.notEmpty(stateText)) {
                 pushStyle();
-                fill(GLConfig.FG_CUBE_LOCKED.getRGB());
-                textFont(pdSansMedium, cubeLockedTextSize);
+                fill(GLConfig.FG_CUBE_STATE.getRGB());
+                textFont(pdSans, cubeLockedTextSize);
                 textAlign(RIGHT, TOP);
-                text(lockText, width - h_offset, v_offset);
+                text(stateText, width - h_offset, v_offset);
                 popStyle();
             }
         }
@@ -395,7 +409,7 @@ public class Main extends PApplet implements Cube.Listener {
                 fill(GLConfig.FG_LAST_MOVE.getRGB());
                 textSize(getTextSize(GLConfig.LAST_MOVE_TEXT_SIZE));
                 textAlign(LEFT, BOTTOM);
-                text(GLConfig.getLastMoveText(lastMove, "CTRL-Z"), h_offset, height - statusTextSize - v_offset * 2);
+                text(GLConfig.getLastMoveText(lastMove, "Ctrl-Z"), h_offset, height - statusTextSize - v_offset * 2);
                 popStyle();
             }
         }
@@ -509,91 +523,91 @@ public class Main extends PApplet implements Cube.Listener {
     }
 
     public void applyMove(@NotNull Move move, boolean saveInStack, boolean now) {
-        if (cubeLocked())
+        if (isCubeLocked())
             return;
         cubeGL.applyMove(move, saveInStack, now);
     }
 
     public void applyMove(@NotNull Move move, boolean saveInStack) {
-        if (cubeLocked())
+        if (isCubeLocked())
             return;
         cubeGL.applyMove(move, saveInStack);
     }
 
     public void applyMove(@NotNull Move move) {
-        if (cubeLocked())
+        if (isCubeLocked())
             return;
         cubeGL.applyMove(move);
     }
 
     public boolean undoLastMove(boolean now) {
-        if (cubeLocked())
+        if (isCubeLocked())
             return false;
         return cubeGL.undoLastMove(now);
     }
 
     public boolean undoLastMove() {
-        if (cubeLocked())
+        if (isCubeLocked())
             return false;
         return cubeGL.undoLastMove();
     }
 
     public void applySequence(@NotNull List<Move> sequence, boolean saveInStack, boolean now) {
-        if (cubeLocked())
+        if (isCubeLocked())
             return;
         cubeGL.applySequence(sequence, saveInStack, now);
     }
 
     public void applySequence(@NotNull List<Move> sequence, boolean saveInStack) {
-        if (cubeLocked())
+        if (isCubeLocked())
             return;
         cubeGL.applySequence(sequence, saveInStack);
     }
 
     public void applySequence(@NotNull List<Move> sequence) {
-        if (cubeLocked())
+        if (isCubeLocked())
             return;
         cubeGL.applySequence(sequence);
     }
 
     public void scramble(int moves, boolean saveInStack, boolean now) {
-        if (cubeLocked())
+        if (isCubeLocked())
             return;
         cubeGL.scramble(moves, saveInStack, now);
     }
 
     public void scramble(int moves, boolean saveInStack) {
-        if (cubeLocked())
+        if (isCubeLocked())
             return;
         cubeGL.scramble(moves, saveInStack);
     }
 
     public void scramble(int moves) {
-        if (cubeLocked())
+        if (isCubeLocked())
             return;
         cubeGL.scramble(moves);
     }
 
     public void scramble() {
-        if (cubeLocked())
+        if (isCubeLocked())
             return;
         cubeGL.scramble();
     }
 
     public void rotateCubeX(int quarters) {
-        if (cubeLocked())
+        if (isCubeLocked())
             return;
         cubeGL.rotateX(quarters, true);
     }
 
     public void rotateCubeY(int quarters) {
-        if (cubeLocked())
+        if (isCubeLocked())
             return;
         cubeGL.rotateY(quarters, true);
     }
 
     public void rotateCubeZ(int quarters) {
-        if (cubeLocked())
+        if (isCubeLocked())
             return;
         cubeGL.rotateZ(quarters, true);
     }
@@ -623,7 +637,7 @@ public class Main extends PApplet implements Cube.Listener {
     }
 
     public void finishAllMoves(boolean cancel) {
-        if (cubeLocked())
+        if (isCubeLocked())
             return;
         cubeGL.finishAllMoves(cancel);
     }
@@ -640,16 +654,31 @@ public class Main extends PApplet implements Cube.Listener {
             return;
 
         mSolving = true;
-        Util.v(R.SHELL_SOLVER, "Solving state: " + cubeRepr2D());
+        int n = getCube().n();
+        Util.v(R.SHELL_SOLVER, String.format("Solving %dx%d state: %s", n, n, cubeRepr2D()));
 
         try {
-            final Solver.Solution solution = Solver.solve3(getCube());
+            final Solver.Solution solution = Solver.solve(getCube());
             mCurSolution = solution;
+
             if (solution.isEmpty()) {
                 Util.v(R.SHELL_SOLVER, "Already solved!");
             } else {
+                StringBuilder sb = new StringBuilder()
+                        .append(" Cube Solved!")
+                        .append("\n............ Solution ............")
+                        .append("\n\t -> Dimensions: ").append(solution.n).append('x').append(solution.n).append('x').append(solution.n)
+                        .append("\n\t -> Moves: ").append(solution.moveCount());
+
                 final Long msTaken = solution.getMsTaken();
-                Util.v(R.SHELL_SOLVER, "Solution: " + solution.getSequence() + (msTaken != null && msTaken > 0 ? ", time taken: " + msTaken + "ms" : ""));
+                if (msTaken != null && msTaken > 0) {
+                    sb.append("\n\t -> Time Taken: ").append(msTaken).append(" ms");
+                }
+
+                sb.append("\n\t -> Sequence: ").append(solution.getSequence());
+                sb.append("\nPress S or enter command <solve> to apply...");
+                sb.append("\n...................................\n");
+                Util.v(R.SHELL_SOLVER, sb.toString());
             }
         } catch (Exception exc) {
             Util.e(R.SHELL_SOLVER, "Solver Failed: " + exc.getMessage());
@@ -663,11 +692,12 @@ public class Main extends PApplet implements Cube.Listener {
         if (mSolving)
             return;
 
-        if (getN() != 3) {
-            Util.w(R.SHELL_SOLVER, "Solver only works for 3*3 cube");
-            return;
-        }
+//        if (getN() != 3) {
+//            Util.w(R.SHELL_SOLVER, "Solver only works for 3*3 cube");
+//            return;
+//        }
 
+        // If Has a solution, apply it
         final Solver.Solution curSolution = mCurSolution;
         invalidateSolution();
         if (!(curSolution == null || curSolution.isEmpty())) {
@@ -675,6 +705,7 @@ public class Main extends PApplet implements Cube.Listener {
             return;
         }
 
+        // FInish all pending moves, and start solving
         finishAllMoves(false);
         thread("doSolveWorker");
     }

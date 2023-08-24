@@ -9,6 +9,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.Unmodifiable;
 import org.kociemba.twophase.Search;
+import util.Util;
 
 import java.util.*;
 
@@ -26,6 +27,7 @@ public class Solver {
 
     public static final int ERR_CODE_INVALID_CUBE = 9;
     public static final int ERR_CODE_MOVE_PARSE = 10;
+    public static final int ERR_CODE_INTERNAL_SOLUTION_NOT_SUPPORTED = 11;
 
     @NotNull
     public static String errMessage(int errorCode) {
@@ -40,6 +42,7 @@ public class Solver {
             case ERR_CODE_PARITY -> "Parity error: Two corners or two edges have to be exchanged";
             case ERR_CODE_LOW_DEPTH -> "Depth error: No solution exists for given max depth";
             case ERR_CODE_TIMEOUT -> "Timeout error!";
+            case ERR_CODE_INTERNAL_SOLUTION_NOT_SUPPORTED -> "Solver does not support this cube yet!";
             default -> "Unknown error!";
         };
     }
@@ -66,7 +69,11 @@ public class Solver {
     public static class Solution {
 
         @NotNull
-        public static final Solution EMPTY = new Solution(Collections.emptyList(), "");
+        public static Solution empty(int n) {
+            return new Solution(n, Collections.emptyList());
+        }
+
+        public final int n;
 
         @NotNull
         @Unmodifiable
@@ -77,9 +84,19 @@ public class Solver {
         @Nullable
         private Long mMsTaken;
 
-        public Solution(@NotNull List<Move> moves, @Nullable String sequence) {
+        public Solution(int n, @NotNull List<Move> moves, @Nullable String sequence) {
+            this.n = n;
             this.moves = Collections.unmodifiableList(moves);
             mSequence = sequence;
+        }
+
+        public Solution(int n, @NotNull List<Move> moves) {
+            this(n, moves, null);
+        }
+
+        @Nullable
+        public Long getMsTaken() {
+            return mMsTaken;
         }
 
         @NotNull
@@ -95,13 +112,52 @@ public class Solver {
             return moves.isEmpty();
         }
 
+        public final int moveCount() {
+            return moves.size();
+        }
+
+        @NotNull
+        public List<Move> getHead(int maxMoves) {
+            if (moves.size() <= maxMoves) {
+                return moves;
+            }
+
+            return moves.subList(0, maxMoves);
+        }
+
+        @NotNull
+        public String getHeadSequence(int maxMoves) {
+            if (moveCount() <= maxMoves)
+                return getSequence();
+
+            return Move.sequence(getHead(maxMoves));
+        }
+
+        @NotNull
+        public List<Move> getTail(int maxMoves) {
+            final int s = moves.size();
+            if (s <= maxMoves) {
+                return moves;
+            }
+
+            return moves.subList(s - maxMoves, s);
+        }
+
+        @NotNull
+        public String getTailSequence(int maxMoves) {
+            if (moveCount() <= maxMoves)
+                return getSequence();
+
+            return Move.sequence(getTail(maxMoves));
+        }
+
+
         @Override
         public boolean equals(Object o) {
             if (this == o)
                 return true;
 
-            if (o instanceof Solution) {
-                final Solution other = (Solution) o;
+            if (o instanceof Solution other) {
                 return moves.equals(other.moves);
             }
 
@@ -118,10 +174,6 @@ public class Solver {
             return getSequence();
         }
 
-        @Nullable
-        public Long getMsTaken() {
-            return mMsTaken;
-        }
     }
 
 
@@ -236,7 +288,7 @@ public class Solver {
 
 
     @NotNull
-    public static Solution parseKociembaSolution(@Nullable String solution, @Nullable List<Move> normMoves, int errMaxDepth, long errTimeoutSecs) throws SolveException {
+    public static Solution parseKociembaSolution(int n, @Nullable String solution, @Nullable List<Move> normMoves, int errMaxDepth, long errTimeoutSecs) throws SolveException {
         if (solution == null || solution.isEmpty() || solution.startsWith("Error")) {
             int errorCode = ERR_CODE_UNKNOWN;
             final SolveException exc;
@@ -306,7 +358,7 @@ public class Solver {
             moves.add(move);
         }
 
-        return new Solution(moves, sequence.add(parsedSolution.replace("_", Move.SEQUENCE_DELIMITER)).toString());
+        return new Solution(n, moves, sequence.add(parsedSolution.replace("_", Move.SEQUENCE_DELIMITER)).toString());
     }
 
 
@@ -318,7 +370,7 @@ public class Solver {
     public static final long DEFAULT_3BY3_TIMEOUT_SECS = 10;
 
     /**
-     * Solves a normalized 3*3 cube state
+     * Solves a normalized 3x3 cube state
      * */
     @NotNull
     public static Solution solveNormalised3(@NotNull String representation2d, @Nullable List<Move> normMoves, int maxDepth, long timeoutSecs) throws SolveException {
@@ -326,7 +378,7 @@ public class Solver {
         final String kociembaSolution = Search.solution(representation2d, maxDepth, timeoutSecs, false);
         final long msTaken = System.currentTimeMillis() - startMs;
 
-        final Solution sol = parseKociembaSolution(kociembaSolution, normMoves, maxDepth, timeoutSecs);
+        final Solution sol = parseKociembaSolution(3, kociembaSolution, normMoves, maxDepth, timeoutSecs);
         sol.mMsTaken = msTaken;
         return sol;
     }
@@ -343,10 +395,10 @@ public class Solver {
     @NotNull
     public static Solution solve3(@NotNull CubeI c, int maxDepth, long timeoutSecs) throws SolveException {
         if (c.n() != 3)
-            throw new SolveException(ERR_CODE_INVALID_CUBE, "Cube should be 3*3, given: " + c.n() + "*" + c.n());
+            throw new SolveException(ERR_CODE_INVALID_CUBE, "Cube should be 3x3, given: " + c.n() + "x" + c.n());
 
         if (c.cacheIsSolved())
-            return Solution.EMPTY;
+            return Solution.empty(3);
 
         // copy
         final Cube cube = new Cube(c);
@@ -367,6 +419,34 @@ public class Solver {
     @NotNull
     public static Solution solve3(@NotNull CubeI c) {
         return solve3(c, DEFAULT_3BY3_MAX_DEPTH, DEFAULT_3BY3_TIMEOUT_SECS);
+    }
+
+
+    private static final long SOLVE_DELAY_MS_MULTIPLIER = 500;
+
+    public static Solution solve(@NotNull CubeI cube) {
+        if (cube.n() == 3) {
+            return solve3(cube);
+        }
+
+        final List<Move> internalSol = cube.getInternalSolution();
+        if (internalSol == null) {
+            throw new SolveException(ERR_CODE_INTERNAL_SOLUTION_NOT_SUPPORTED, "No solver module registered for " + cube.n() + "*" + cube.n() + " cube!");
+        }
+
+        if (internalSol.isEmpty()) {
+            return Solution.empty(cube.n());
+        }
+
+        final long ms = (long) (SOLVE_DELAY_MS_MULTIPLIER * Math.sqrt(cube.n()) * Math.log10(internalSol.size()) * Util.RANDOM.nextFloat(0.6f, 1.1f));
+        try {
+            Thread.sleep(ms);
+        } catch (InterruptedException ignored) {
+        }
+
+        final Solution sol = new Solution(cube.n(), internalSol);
+        sol.mMsTaken = ms;
+        return sol;
     }
 
 }

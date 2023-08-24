@@ -4,15 +4,17 @@ import model.cubie.Cubie;
 import model.cubie.Move;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import util.Listeners;
+import util.live.Listeners;
 
+import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 /**
  * Basic implementation of a cube
- * */
+ */
 public final class Cube implements CubeI {
 
     public interface Listener {
@@ -22,10 +24,12 @@ public final class Cube implements CubeI {
     public final int n;       // dimension
     @NotNull
     private final Cubie[] cubies;
-//    private int mCachedHeuristic = -1;       // -ve for not set (0 for solved)
+    //    private int mCachedHeuristic = -1;       // -ve for not set (0 for solved)
+    @NotNull
+    private final LinkedList<Move> mInternalMoves = new LinkedList<>();      // Parsed internal moves
 
     @Nullable
-    private LinkedList<Move> mMoves;
+    private LinkedList<Move> mMovesStack;       // Applied moves that are explicitly saved
     @Nullable
     private int[] mAllLayersShared;
 
@@ -40,7 +44,7 @@ public final class Cube implements CubeI {
 
     private Cube(int n, @NotNull Cubie[] cubies) {
         if (cubies.length != CubeI.totalCubies(n))
-            throw new IllegalArgumentException("INVALID STATE: For a " + n + "*" + n + " cube, cubies array length must be equal to " + CubeI.totalCubies(n) +", given: " + cubies.length);
+            throw new IllegalArgumentException("INVALID STATE: For a " + n + "*" + n + " cube, cubies array length must be equal to " + CubeI.totalCubies(n) + ", given: " + cubies.length);
 
         this.n = n;
         this.cubies = cubies;
@@ -69,7 +73,7 @@ public final class Cube implements CubeI {
     }
 
     public final void forEachCubie(@NotNull Consumer<Cubie> action) {
-        for (Cubie qb: cubies) {
+        for (Cubie qb : cubies) {
             action.accept(qb);
         }
     }
@@ -85,41 +89,66 @@ public final class Cube implements CubeI {
     }
 
 
-    private void addMove(@NotNull Move move) {
-        if (mMoves == null) {
-            mMoves = new LinkedList<>();
+    private void addMoveInStack(@NotNull Move move) {
+        if (mMovesStack == null) {
+            mMovesStack = new LinkedList<>();
         }
 
-        mMoves.addLast(move);
+        mMovesStack.addLast(move);
     }
 
     @Nullable
     public Move peekLastMove() {
-        return mMoves != null? mMoves.peekLast(): null;
+        return mMovesStack != null ? mMovesStack.peekLast() : null;
     }
 
     @Nullable
     public Move pollLastMove() {
-        return mMoves != null? mMoves.pollLast(): null;
+        return mMovesStack != null ? mMovesStack.pollLast() : null;
     }
 
     @Nullable
     public Move peekFirstMove() {
-        return mMoves != null? mMoves.peekFirst(): null;
+        return mMovesStack != null ? mMovesStack.peekFirst() : null;
     }
 
     @Nullable
     public Move pollFirstMove() {
-        return mMoves != null? mMoves.pollFirst(): null;
+        return mMovesStack != null ? mMovesStack.pollFirst() : null;
     }
 
     public void forEachMove(@NotNull Consumer<Move> action) {
-        if (mMoves == null || mMoves.isEmpty())
+        if (mMovesStack == null || mMovesStack.isEmpty())
             return;
 
-        for (Move m: mMoves) {
+        for (Move m : mMovesStack) {
             action.accept(m);
         }
+    }
+
+
+    private void addMoveInternal(@NotNull Move move) {
+        Move last = mInternalMoves.peekLast();
+
+        // parsing, can be better than this
+        if (last != null && last.isReverse(move, n)) {
+            mInternalMoves.removeLast();
+        } else {
+            mInternalMoves.addLast(move);
+        }
+    }
+
+    @NotNull
+    @Override
+    public List<Move> getInternalSolution() {
+        final Iterator<Move> itr = mInternalMoves.descendingIterator();
+        final List<Move> sol = new LinkedList<>();
+
+        while (itr.hasNext()) {
+            sol.add(itr.next().reverse());
+        }
+
+        return sol;
     }
 
 
@@ -131,7 +160,11 @@ public final class Cube implements CubeI {
         return mListeners.removeListener(listener);
     }
 
-    protected void onMoveApplied(@NotNull Move move, int cubiesAffected, boolean saved) {
+    public void ensureListener(@NotNull Listener listener) {
+        mListeners.ensureListener(listener);
+    }
+
+    private void onMoveApplied(@NotNull Move move, int cubiesAffected, boolean saved) {
 //        if (cubiesAffected > 0) {
 //            System.out.println("Move applied: " + move);
 //        }
@@ -143,7 +176,7 @@ public final class Cube implements CubeI {
         final Predicate<Cubie> filter = move.cubieFilter(n);
 
         int qbCounter = 0;
-        for (Cubie qb: cubies) {
+        for (Cubie qb : cubies) {
             if (filter.test(qb)) {
 //                final int h = cacheHeuristic();
 //                final int ch = qb.calculateHeuristic();
@@ -153,9 +186,14 @@ public final class Cube implements CubeI {
             }
         }
 
-        final boolean save = saveInStack && qbCounter > 0;
+        final boolean applied = qbCounter > 0;
+        if (applied) {
+            addMoveInternal(move);
+        }
+
+        final boolean save = applied && saveInStack;
         if (save) {
-            addMove(move);
+            addMoveInStack(move);
         }
 
         onMoveApplied(move, qbCounter, save);
@@ -184,7 +222,6 @@ public final class Cube implements CubeI {
     public void rotateZ(int quarters, boolean saveInStack) {
         applyMove(rotateZMove(quarters), saveInStack);
     }
-
 
 
 //    @Override

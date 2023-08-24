@@ -14,8 +14,9 @@
 
 ## Algorithm
 
-* Uses a 2-phase A<sup>*</sup> algorithm with manhattan cost function, based
-  on [Kociemba Algorithm](http://kociemba.org/math/imptwophase.htm)
+* Uses a 2-phase generic A<sup>*</sup> algorithm with manhattan cost function, based
+  on the extension of basic [Kociemba Algorithm](http://kociemba.org/math/imptwophase.htm)
+* Solves any NxNxN dimensional cube through an iterative stochastic gradient descent of heuristic cost function
 * **Can solve a 3x3 cube under 20 moves in less than 1 second**
 * The preprocessing phase includes
     * Error checks for facelets, edges, corners, edge flips, corner twists and parity

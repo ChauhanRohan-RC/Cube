@@ -16,8 +16,8 @@ public class GLConfig {
     public static final boolean CUBE_INVERT_X = false;
     public static final boolean CUBE_INVERT_Y = true;
     public static final boolean CUBE_INVERT_Z = false;
-    public static final boolean CUBE_DRAW_AXISES = false;
-    public static final boolean CUBE_DRAW_ONLY_POSITIVE_AXISES = true;      // only when drawing axises
+    public static final boolean CUBE_DRAW_AXES = false;
+    public static final boolean CUBE_DRAW_ONLY_POSITIVE_AXES = true;      // only when drawing axes
 
     /* Sticker (weights as fractions of side length) */
     public static final boolean CUBIE_DRAW_INTERNAL_FACES = false;
@@ -47,7 +47,7 @@ public class GLConfig {
     public static final boolean DEFAULT_MOVE_USE_NORMALIZED_QUARTERS = false;
     public static final Interpolator DEFAULT_MOVE_INTERPOLATOR = Interpolator.ACCELERATE_DECELERATE;
 
-    public static final int MOVE_QUARTER_DURATION_MS_MIN = 80;
+    public static final int MOVE_QUARTER_DURATION_MS_MIN = 30;
     public static final int MOVE_QUARTER_DURATION_MS_MAX = 2500;
     public static final int MOVE_QUARTER_DURATION_MS_DEFAULT = 280;
 
@@ -136,16 +136,16 @@ public class GLConfig {
     public static final Color FG_LAST_MOVE = FG_DARK;
 
     public static final boolean SHOW_STATUS = true;
-    public static final float STATUS_TEXT_SIZE = 0.03f;
+    public static final float STATUS_TEXT_SIZE = 0.024f;
     public static final Color FG_STATUS_BAR = ACCENT;
 
     public static final boolean SHOW_CAMERA_MODE = true;
     public static final float CAMERA_MODE_TEXT_SIZE = 0.02f;
     public static final Color FG_CAMERA_MODE = ACCENT_HIGHLIGHT;
 
-    public static final boolean SHOW_CUBE_LOCKED = true;
-    public static final float CUBE_LOCKED_TEXT_SIZE = 0.02f;
-    public static final Color FG_CUBE_LOCKED = ACCENT_HIGHLIGHT;
+    public static final boolean SHOW_CUBE_STATE = true;
+    public static final float CUBE_STATE_TEXT_SIZE = 0.024f;
+    public static final Color FG_CUBE_STATE = ACCENT_HIGHLIGHT;
 
     public static final boolean SHOW_CONTROLS_DES = true;
     public static final boolean DEFAULT_CONTROLS_SHOWN = true;      // only when SHOW_CONTROLS_DES = true
@@ -200,7 +200,9 @@ public class GLConfig {
 
     /* Status */
 
-    public static final String STATUS_SOLVING = "SOLVING";
+    public static final String STATUS_SOLVING = "Solving";
+    public static final String STATUS_ALREADY_SOLVED = "Solved";
+    public static final String STATUS_SOLUTION_SEQ = "Solution";
     public static final String DOT = ".";
 
     @Nullable
@@ -212,7 +214,18 @@ public class GLConfig {
         }
 
         if (solution != null) {
-            return solution.isEmpty()? "SOLVED": concatKeyBinding("SOLUTION", solution.getSequence(), runSolutionKeyBinding);
+            if (solution.isEmpty())
+                return STATUS_ALREADY_SOLVED;
+
+            final int maxCount = (int) (app.width / (getTextSize(app, STATUS_TEXT_SIZE) * 2)) - 10;
+            final String seq;
+            if (solution.moveCount() <= maxCount) {
+                seq = solution.getSequence();
+            } else {
+                seq = solution.getHeadSequence(maxCount) + " + " + Math.abs(solution.moveCount() - maxCount) + " moves";
+            }
+
+            return concatKeyBinding(STATUS_SOLUTION_SEQ, seq, runSolutionKeyBinding);
         }
 
         return null;
@@ -231,7 +244,7 @@ public class GLConfig {
 
     @NotNull
     public static String getLastMoveText(@NotNull Move lastMove, @Nullable String keyBinding) {
-        return concatKeyBinding("LAST MOVE", lastMove.toString(), keyBinding);
+        return concatKeyBinding("Last Move", lastMove.toString(), keyBinding);
     }
 
     @NotNull
@@ -240,8 +253,8 @@ public class GLConfig {
     }
 
     @Nullable
-    public static String getCubeLockedText(boolean cubeLocked) {
-        return cubeLocked? "LOCKED": null;
+    public static String getCubeStateText(int n, boolean cubeLocked) {
+        return (cubeLocked? "LOCKED | ": "") + n + "x" + n;
     }
 
     @NotNull

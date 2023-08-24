@@ -197,6 +197,10 @@ public class CubeNode implements CubeI {
         return createChildren(DEFAULT_EXCLUDE_REDUNDANT_CHILDREN);
     }
 
+    @Override
+    public @Nullable List<Move> getInternalSolution() {
+        return null;
+    }
 
     @Override
     public boolean equals(Object o) {

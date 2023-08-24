@@ -5,10 +5,12 @@ import org.jetbrains.annotations.Nullable;
 import processing.core.PApplet;
 
 import java.awt.geom.Point2D;
+import java.util.Random;
 
 public class Util {
 
     public static final float HALF_PI = PApplet.HALF_PI;
+    public static final Random RANDOM = new Random();
 
     private static final boolean DEBUG = true;
     private static final String LOG_TAG_DEBUG = "DEBUG";

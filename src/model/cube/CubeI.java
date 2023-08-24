@@ -5,6 +5,7 @@ import model.Axis;
 import model.Point3DInt;
 import model.cubie.*;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 import java.util.function.Consumer;
@@ -153,8 +154,7 @@ public interface CubeI {
         return axis.isPositive()? (n - 1 - absLayerIndex): absLayerIndex;
     }
 
-    @NotNull
-    static int[] createAllLayers(int n) {
+    static int @NotNull[] createAllLayers(int n) {
         final int[] layers = new int[n];
 
         for (int i=0; i < n; i++) {
@@ -452,6 +452,17 @@ public interface CubeI {
     }
 
 
+
+    /* Solve */
+
+    /**
+     * @return
+     * 1. A move sequence, which when applied will solve the current cube state.
+     * 2. An empty list if the cube is already solved
+     * 3. {@code null} if not supported
+     * */
+    @Nullable
+    List<Move> getInternalSolution();
 
 
     /* Representation */

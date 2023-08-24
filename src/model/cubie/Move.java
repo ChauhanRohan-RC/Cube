@@ -5,7 +5,7 @@ import model.cube.CubeI;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.Unmodifiable;
-import util.CollectionUtil;
+import util.misc.CollectionUtil;
 
 import java.util.*;
 import java.util.function.Consumer;
