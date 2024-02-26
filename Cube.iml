@@ -9,10 +9,10 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
-    <orderEntry type="library" name="core" level="project" />
-    <orderEntry type="library" name="gluegen-rt-natives-linux-aarch64" level="project" />
-    <orderEntry type="library" name="peasycam" level="project" />
-    <orderEntry type="library" name="org.jetbrains.annotations.19.0.0" level="project" />
     <orderEntry type="library" name="twophase" level="project" />
+    <orderEntry type="library" name="org.jetbrains.annotations.19.0.0" level="project" />
+    <orderEntry type="library" name="processing-core-3.3.7" level="project" />
+    <orderEntry type="library" name="processing-sound" level="project" />
+    <orderEntry type="library" name="peasycam-3.0.2" level="project" />
   </component>
 </module>

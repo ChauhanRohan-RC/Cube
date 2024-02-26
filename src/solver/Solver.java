@@ -9,7 +9,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.Unmodifiable;
 import org.kociemba.twophase.Search;
-import util.Util;
+import util.U;
 
 import java.util.*;
 
@@ -438,7 +438,7 @@ public class Solver {
             return Solution.empty(cube.n());
         }
 
-        final long ms = (long) (SOLVE_DELAY_MS_MULTIPLIER * Math.sqrt(cube.n()) * Math.log10(internalSol.size()) * Util.RANDOM.nextFloat(0.6f, 1.1f));
+        final long ms = (long) (SOLVE_DELAY_MS_MULTIPLIER * Math.sqrt(cube.n()) * Math.log10(internalSol.size()) * U.RANDOM.nextFloat(0.6f, 1.1f));
         try {
             Thread.sleep(ms);
         } catch (InterruptedException ignored) {

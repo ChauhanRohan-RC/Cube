@@ -4,7 +4,7 @@ import model.Axis;
 import model.Point3D;
 import model.Point3DInt;
 import model.cube.CubeI;
-import util.Util;
+import util.U;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -95,7 +95,7 @@ public abstract class Cubie {
 
     public final void rotate(@NotNull Axis around, int quarters) {
         // rotate coordinates
-        final Point3D coords = around.rotate(mCenter.x, mCenter.y, mCenter.z, quarters * Util.HALF_PI);
+        final Point3D coords = around.rotate(mCenter.x, mCenter.y, mCenter.z, quarters * U.HALF_PI);
 
         final Point3DInt prev = mCenter;
         mCenter = new Point3DInt(Math.round((float) coords.x), Math.round((float) coords.y), Math.round((float) coords.z));

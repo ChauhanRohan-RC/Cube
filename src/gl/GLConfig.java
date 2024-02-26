@@ -7,11 +7,18 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import processing.core.PApplet;
 import solver.Solver;
-import util.Util;
+import sound.MidiNotePlayer;
+import util.Format;
 
 import java.awt.*;
 
 public class GLConfig {
+
+    public static final float FRAME_RATE = 120;
+    public static final boolean DEFAULT_WINDOW_IN_SCREEN_CENTER = true;
+
+    public static final boolean DEFAULT_SOUND_ENABLED = true;
+    public static final boolean DEFAULT_POLY_RHYTHM_ENABLED = MidiNotePlayer.DEFAULT_POLY_RHYTHM_ENABLED;
 
     public static final boolean CUBE_INVERT_X = false;
     public static final boolean CUBE_INVERT_Y = true;
@@ -233,13 +240,12 @@ public class GLConfig {
 
     @Nullable
     public static String getSecStatusText(float moveSpeedPercent) {
-        return "Speed: " + formatPercentage(moveSpeedPercent) + "%";
+        return "Speed: " + Format.nf001(moveSpeedPercent) + "%";
     }
-
 
     @NotNull
     public static String concatKeyBinding(@NotNull String prefix, @Nullable String suffix, @Nullable String keyBinding) {
-        return prefix + (Util.isEmpty(keyBinding)? "": " [" + keyBinding + "]") + " : " + (Util.isEmpty(suffix)? "N/A": suffix);
+        return prefix + (Format.isEmpty(keyBinding)? "": " [" + keyBinding + "]") + " : " + (Format.isEmpty(suffix)? "N/A": suffix);
     }
 
     @NotNull
@@ -255,14 +261,5 @@ public class GLConfig {
     @Nullable
     public static String getCubeStateText(int n, boolean cubeLocked) {
         return (cubeLocked? "LOCKED | ": "") + n + "x" + n;
-    }
-
-    @NotNull
-    public static String formatPercentage(float p) {
-        if (p == (int) p) {
-            return String.valueOf((int) p) + "%";
-        }
-
-        return String.format("%.2f%%", p);
     }
 }

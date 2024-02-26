@@ -1,0 +1,29 @@
+<component name="libraryTable">
+  <library name="processing-core-3.3.7">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/libs/processing/core/core-3.3.7.jar!/" />
+      <root url="jar://$PROJECT_DIR$/libs/processing/core/gluegen-rt-natives-linux-aarch64.jar!/" />
+      <root url="jar://$PROJECT_DIR$/libs/processing/core/gluegen-rt-natives-linux-amd64.jar!/" />
+      <root url="jar://$PROJECT_DIR$/libs/processing/core/gluegen-rt-natives-linux-armv6hf.jar!/" />
+      <root url="jar://$PROJECT_DIR$/libs/processing/core/gluegen-rt-natives-linux-i586.jar!/" />
+      <root url="jar://$PROJECT_DIR$/libs/processing/core/gluegen-rt-natives-macosx-universal.jar!/" />
+      <root url="jar://$PROJECT_DIR$/libs/processing/core/gluegen-rt-natives-windows-amd64.jar!/" />
+      <root url="jar://$PROJECT_DIR$/libs/processing/core/gluegen-rt-natives-windows-i586.jar!/" />
+      <root url="jar://$PROJECT_DIR$/libs/processing/core/gluegen-rt.jar!/" />
+      <root url="jar://$PROJECT_DIR$/libs/processing/core/jogl-all-natives-linux-aarch64.jar!/" />
+      <root url="jar://$PROJECT_DIR$/libs/processing/core/jogl-all-natives-linux-amd64.jar!/" />
+      <root url="jar://$PROJECT_DIR$/libs/processing/core/jogl-all-natives-linux-armv6hf.jar!/" />
+      <root url="jar://$PROJECT_DIR$/libs/processing/core/jogl-all-natives-linux-i586.jar!/" />
+      <root url="jar://$PROJECT_DIR$/libs/processing/core/jogl-all-natives-macosx-universal.jar!/" />
+      <root url="jar://$PROJECT_DIR$/libs/processing/core/jogl-all-natives-windows-amd64.jar!/" />
+      <root url="jar://$PROJECT_DIR$/libs/processing/core/jogl-all-natives-windows-i586.jar!/" />
+      <root url="jar://$PROJECT_DIR$/libs/processing/core/jogl-all.jar!/" />
+    </CLASSES>
+    <JAVADOC>
+      <root url="jar://$PROJECT_DIR$/libs/processing/core/core-3.3.7-javadoc.jar!/" />
+    </JAVADOC>
+    <SOURCES>
+      <root url="jar://$PROJECT_DIR$/libs/processing/core/core-3.3.7-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

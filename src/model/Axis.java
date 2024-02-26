@@ -1,10 +1,9 @@
 package model;
 
-import model.cube.CubeI;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.Unmodifiable;
-import util.Util;
+import util.U;
 
 import java.awt.geom.Point2D;
 
@@ -122,7 +121,7 @@ public enum Axis {
         if (Math.abs(quarters) == 2)
             return invert();
 
-        final Point3D rotated = rotate(unitX, unitY, unitZ, around, quarters * Util.HALF_PI);
+        final Point3D rotated = rotate(unitX, unitY, unitZ, around, quarters * U.HALF_PI);
         final int x = Math.round((float) rotated.x);
         if (x == 1)
             return X;
@@ -194,7 +193,7 @@ public enum Axis {
      * @see #queryRotation(Axis, float)
      * */
     public static float queryRotation(@NotNull Axis around, int quarters) {
-        return queryRotation(around, quarters * Util.HALF_PI);
+        return queryRotation(around, quarters * U.HALF_PI);
     }
 
     /**
@@ -216,13 +215,13 @@ public enum Axis {
 
         switch (around) {
             case X, X_N -> {        // YZ rotation
-                final Point2D r = Util.rotate(y, z, rad);
+                final Point2D r = U.rotate(y, z, rad);
                 return new Point3D(x, r.getX(), r.getY());
             } case Y, Y_N -> {        // ZX rotation
-                final Point2D r = Util.rotate(z, x, rad);
+                final Point2D r = U.rotate(z, x, rad);
                 return new Point3D(r.getY(), y, r.getX());
             } default -> {        // XY rotation
-                final Point2D r = Util.rotate(x, y, rad);
+                final Point2D r = U.rotate(x, y, rad);
                 return new Point3D(r.getX(), r.getY(), z);
             }
         }

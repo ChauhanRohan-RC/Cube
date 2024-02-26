@@ -1,7 +1,9 @@
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import util.Util;
+import util.Config;
+import util.Format;
 
+import java.awt.*;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
@@ -9,6 +11,8 @@ import java.nio.file.Path;
 public class R {
 
     public static final boolean FROZEN = false;         // TODO: set true before packaging
+
+    public static final String APP_TITLE = "Rubik's Cube Simulation and Solver";
 
 
     // Dir structure
@@ -30,7 +34,25 @@ public class R {
     public static final Path FONT_PD_SANS_MEDIUM = DIR_FONT.resolve("product_sans_medium.ttf");
 
 
-    public static final String APP_NAME = "Rubik's Cube Simulation and Solver";
+    // Configurations
+
+    public static final Path FILE_CONFIG = DIR_MAIN.resolve("configuration.ini");
+    public static final Config CONFIG = Config.obtain(FILE_CONFIG);       // Since configs are lazily loaded, this does not have any cost
+
+    public static final String CONFIG_KEY_FULLSCREEN = "fullscreen";
+    public static final String CONFIG_KEY_WIN_WIDTH_PIXELS = "win_width";   // pixels has precedence over ratio
+    public static final String CONFIG_KEY_WIN_HEIGHT_PIXELS = "win_height"; // pixels has precedence over ratio
+    public static final String CONFIG_KEY_WIN_WIDTH_RATIO = "win_width_ratio";
+    public static final String CONFIG_KEY_WIN_HEIGHT_RATIO = "win_height_ratio";
+    public static final String CONFIG_KEY_SOUND = "sound";
+    public static final String CONFIG_KEY_POLY_RHYTHM = "poly_rhythm";
+    public static final String CONFIG_KEY_ANIMATION_SPEED = "anim_speed";
+
+    @NotNull
+    public static Dimension getConfigWindowSize(@NotNull Config config, @NotNull Dimension screenSize, @NotNull Dimension defaultValue) {
+        return Config.getConfigWindowSize(config, CONFIG_KEY_WIN_WIDTH_PIXELS, CONFIG_KEY_WIN_HEIGHT_PIXELS, CONFIG_KEY_WIN_WIDTH_RATIO, CONFIG_KEY_WIN_HEIGHT_RATIO, screenSize, defaultValue);
+    }
+
 
     // Shell
 
@@ -38,7 +60,7 @@ public class R {
 
     @NotNull
     public static String shellPath(@Nullable String child) {
-        return (Util.isEmpty(child)? SHELL_ROOT_NS: SHELL_ROOT_NS + "\\" + child) + ">";
+        return (Format.isEmpty(child)? SHELL_ROOT_NS: SHELL_ROOT_NS + "\\" + child) + "> ";
     }
 
     public static final String SHELL_ROOT = shellPath(null);
@@ -46,26 +68,52 @@ public class R {
     public static final String SHELL_SCRAMBLE = shellPath("scramble");
     public static final String SHELL_SOLVER = shellPath("solve");
     public static final String SHELL_MOVE = shellPath("move");
+    public static final String SHELL_WINDOW = shellPath("win");
 
 
     public static final String DES_SHELL_COMMANDS =
             """
-            # COMMANDS
-             -> enter moves sequence (moves separated by space)
-             -> n [dimension] -> set cube dimension
-             -> scramble [moves]: scramble with given no of moves
-             -> undo: undo last move
+            # COMMANDS .................................
+            
+             -> <move_seq> : Directly enter moves separated by space to apply
+                Example: U R' FF B2 L'[0,1]
+                
+             -> n <dimension> : Sets the cube dimension
+             -> scramble <num_moves> : Scramble with the given number of moves
+             -> undo: Undo the last move
              -> finish [c]: finish / cancel animating and pending moves
-             -> solve: Solve / Apply solution (Only for 3*3 cube)
-             -> reset [what]: Reset [cube, zoom]
-             -> speed [+ / - / percent]: Increase / Decrease / Set move animation speed
-             -> interpolator [key]: Set move animation interpolator
+                Options:
+                1. c -> Cancel pending moves
+                
+             -> solve : Solve / Apply solution (Only for 3*3 cube)
+             -> reset [cube | zoom] : Reset the specified scope
+                Scopes
+                1. cube : reset cube state
+                2. zoom : reset cube zoom
+                
+             -> speed <+ | - | percent>: Set move animation speed
+                Wildcards
+                1. + -> increase animation speed
+                2. - -> decrease animation speed
+                
+             -> interpolator <key>: Set move animation interpolator
+                Keys
+                1. default -> the default interpolator
+                2. linear -> Linear interpolator
+                3. bounce -> Bounce interpolator
+                4. acc -> Accelerate interpolator
+                5. dec -> Decelerate interpolator
+                6. acd -> Accelerate-Decelerate interpolator
+                7. anticipate -> Anticipate interpolator
+                8. overshoot -> Overshoot interpolator
+                
              -> exit / quit: quit
             """;
 
     public static final String DES_SHELL_MOVES =
             """
-            # MOVES (Clockwise)
+            # MOVES (Clockwise) ..............................
+            
               U: Up
               R: Right
               F: Front
@@ -86,7 +134,7 @@ public class R {
             """;
 
     public static final String SHELL_INSTRUCTIONS =
-            "\n.......... "+ R.APP_NAME +" ..........\n" +
+            "\n.......... "+ R.APP_TITLE +" ..........\n" +
             "This is a 3D generic NxNxN Rubik's cube simulator and solver program. It supports any N-dimensional cube, with both graphical and Command-Line controls\n\n"
             + DES_SHELL_MOVES + "\n"
             + DES_SHELL_COMMANDS;
