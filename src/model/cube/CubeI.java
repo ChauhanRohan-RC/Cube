@@ -330,6 +330,13 @@ public interface CubeI {
         }
     }
 
+    /**
+     * @return whether the cube is locked i.e. is not currently applying any moves
+     * */
+    boolean isLocked();
+
+    void setLocked(boolean locked);
+
     @NotNull
     default Cubie[] copyState() {
         final Cubie[] copy = new Cubie[noOfCubies()];

@@ -5,12 +5,12 @@ import model.cubie.Move;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import util.live.Listeners;
+import util.misc.CollectionUtil;
 
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.function.Consumer;
-import java.util.function.Predicate;
 
 /**
  * Basic implementation of a cube
@@ -18,16 +18,19 @@ import java.util.function.Predicate;
 public final class Cube implements CubeI {
 
     public interface Listener {
-        void onMoveApplied(@NotNull Move move, int cubiesAffected, boolean saved);
+        void onMoveApplied(@NotNull Cube cube, @NotNull Move move, int cubiesAffected, boolean saved);
+
+        void onCubeLockChanged(@NotNull Cube cube, boolean locked);
     }
 
     public final int n;       // dimension
     @NotNull
     private final Cubie[] cubies;
+    private volatile boolean mLocked;
+
     //    private int mCachedHeuristic = -1;       // -ve for not set (0 for solved)
     @NotNull
     private final LinkedList<Move> mInternalMoves = new LinkedList<>();      // Parsed internal moves
-
     @Nullable
     private LinkedList<Move> mMovesStack;       // Applied moves that are explicitly saved
     @Nullable
@@ -78,6 +81,26 @@ public final class Cube implements CubeI {
         }
     }
 
+    @Override
+    public boolean isLocked() {
+        return mLocked;
+    }
+
+    private void onLockChanged(boolean locked) {
+        mListeners.forEachListener(l -> l.onCubeLockChanged(this, locked));
+    }
+
+    @Override
+    public void setLocked(boolean locked) {
+        final boolean l = mLocked;
+        if (l == locked)
+            return;
+
+        mLocked = locked;
+        onLockChanged(locked);
+    }
+
+
     @NotNull
     @Override
     public int[] allLayersShared() {
@@ -86,15 +109,6 @@ public final class Cube implements CubeI {
         }
 
         return mAllLayersShared;
-    }
-
-
-    private void addMoveInStack(@NotNull Move move) {
-        if (mMovesStack == null) {
-            mMovesStack = new LinkedList<>();
-        }
-
-        mMovesStack.addLast(move);
     }
 
     @Nullable
@@ -118,10 +132,11 @@ public final class Cube implements CubeI {
     }
 
     public void forEachMove(@NotNull Consumer<Move> action) {
-        if (mMovesStack == null || mMovesStack.isEmpty())
+        final List<Move> stack = mMovesStack;
+        if (stack == null || stack.isEmpty())
             return;
 
-        for (Move m : mMovesStack) {
+        for (Move m : CollectionUtil.linkedListCopy(stack)) {
             action.accept(m);
         }
     }
@@ -136,6 +151,27 @@ public final class Cube implements CubeI {
         } else {
             mInternalMoves.addLast(move);
         }
+    }
+
+    public int getAllAppliedMovesCount() {
+        return CollectionUtil.size(mInternalMoves);
+    }
+
+    @NotNull
+    public List<Move> getAllAppliedMovesCopy(boolean randomAccess) {
+        return randomAccess? CollectionUtil.arrayListCopy(mInternalMoves): CollectionUtil.linkedListCopy(mInternalMoves);
+    }
+
+    private void addMoveInStack(@NotNull Move move) {
+        if (mMovesStack == null) {
+            mMovesStack = new LinkedList<>();
+        }
+
+        mMovesStack.addLast(move);
+    }
+
+    public int getMovesInStackCount() {
+        return CollectionUtil.size(mMovesStack);
     }
 
     @NotNull
@@ -169,11 +205,17 @@ public final class Cube implements CubeI {
 //            System.out.println("Move applied: " + move);
 //        }
 
-        mListeners.forEachListener(l -> l.onMoveApplied(move, cubiesAffected, saved));
+        mListeners.forEachListener(l -> l.onMoveApplied(Cube.this, move, cubiesAffected, saved));
     }
 
-    public final void applyMove(@NotNull Move move, boolean saveInStack) {
-        final Predicate<Cubie> filter = move.cubieFilter(n);
+    /**
+     * @return whether the given move has affected the cube
+     * */
+    public boolean applyMove(@NotNull Move move, boolean saveInStack) {
+        if (isLocked())
+            return false;
+
+        final Move.CubieFilter filter = move.cubieFilter(n);
 
         int qbCounter = 0;
         for (Cubie qb : cubies) {
@@ -197,30 +239,42 @@ public final class Cube implements CubeI {
         }
 
         onMoveApplied(move, qbCounter, save);
+        return applied;
     }
 
-    public final void applyMove(@NotNull Move move) {
-        applyMove(move, true);
+    public boolean applyMove(@NotNull Move move) {
+        return applyMove(move, true);
     }
 
-    public final boolean undoLastMove() {
+    public boolean undoLastMove() {
+        if (isLocked())
+            return false;
+
         final Move last = pollLastMove();
         if (last == null)
             return false;
-        applyMove(last.reverse(), false);
-        return true;
+        return applyMove(last.reverse(), false);
     }
 
-    public void rotateX(int quarters, boolean saveInStack) {
-        applyMove(rotateXMove(quarters), saveInStack);
+    public boolean rotateX(int quarters, boolean saveInStack) {
+        if (isLocked())
+            return false;
+
+        return applyMove(rotateXMove(quarters), saveInStack);
     }
 
-    public void rotateY(int quarters, boolean saveInStack) {
-        applyMove(rotateYMove(quarters), saveInStack);
+    public boolean rotateY(int quarters, boolean saveInStack) {
+        if (isLocked())
+            return false;
+
+        return applyMove(rotateYMove(quarters), saveInStack);
     }
 
-    public void rotateZ(int quarters, boolean saveInStack) {
-        applyMove(rotateZMove(quarters), saveInStack);
+    public boolean rotateZ(int quarters, boolean saveInStack) {
+        if (isLocked())
+            return false;
+
+        return applyMove(rotateZMove(quarters), saveInStack);
     }
 
 

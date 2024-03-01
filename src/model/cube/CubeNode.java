@@ -110,6 +110,16 @@ public class CubeNode implements CubeI {
     }
 
     @Override
+    public boolean isLocked() {
+        return false;
+    }
+
+    @Override
+    public void setLocked(boolean locked) {
+        /* no-op */
+    }
+
+    @Override
     public final int cacheHeuristic() {
         if (mCachedHeuristic < 0) {
             mCachedHeuristic = calculateHeuristic();

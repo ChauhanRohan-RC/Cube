@@ -257,6 +257,14 @@ public class U {
         return (amt < low)? low: Math.min(amt, high);
     }
 
+    public static float constrain_0_100(float amt) {
+        return constrain(amt, 0, 100);
+    }
+
+    public static float constrain_0_1(float amt) {
+        return constrain(amt, 0, 1);
+    }
+
 
     @Nullable
     public static Runnable chainRunnables(@Nullable Collection<? extends Runnable> tasks) {

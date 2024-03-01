@@ -8,10 +8,13 @@ import model.cubie.Move;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.Unmodifiable;
-import org.kociemba.twophase.Search;
+import solver.twophase3x3.Search;
 import util.U;
+import util.async.Async;
+import util.async.CancellationProvider;
 
 import java.util.*;
+import java.util.concurrent.CancellationException;
 
 public class Solver {
 
@@ -186,7 +189,7 @@ public class Solver {
      * */
     @Unmodifiable
     @NotNull
-    public static List<Move> normalizeCube(@NotNull Cube cube) {
+    public static List<Move> normalizeCube(@NotNull Cube cube, @Nullable CancellationProvider c) throws CancellationException {
         if (cube.n < 3 || cube.n % 2 == 0)
             return Collections.emptyList();
 
@@ -232,6 +235,8 @@ public class Solver {
                 }
             }
 
+            Async.throwIfCancelled(c);
+
             if (u == null || r == null || f == null || d == null || l == null || b == null)
                 break norm;
 
@@ -274,6 +279,8 @@ public class Solver {
             }
         }
 
+        Async.throwIfCancelled(c);
+
         final List<Move> moves = new LinkedList<>();
         if (normUpMove != null) {
             moves.add(normUpMove);
@@ -288,7 +295,7 @@ public class Solver {
 
 
     @NotNull
-    public static Solution parseKociembaSolution(int n, @Nullable String solution, @Nullable List<Move> normMoves, int errMaxDepth, long errTimeoutSecs) throws SolveException {
+    public static Solution parseKociembaSolution(int n, @Nullable String solution, @Nullable List<Move> normMoves, int errMaxDepth, long errTimeoutSecs, @Nullable CancellationProvider c) throws SolveException, CancellationException {
         if (solution == null || solution.isEmpty() || solution.startsWith("Error")) {
             int errorCode = ERR_CODE_UNKNOWN;
             final SolveException exc;
@@ -335,6 +342,8 @@ public class Solver {
                 .replace("D ", Move.DOWN_CLOCKWISE + "_")
                 .replace(" ", "");
 
+        Async.throwIfCancelled(c);
+
         parsedSolution = parsedSolution.substring(0, parsedSolution.length() - 1);      // exclude last _
 
         final String[] moves_str = parsedSolution.split("_");
@@ -347,6 +356,8 @@ public class Solver {
                 sequence.add(m.toString());
             }
         }
+
+        Async.throwIfCancelled(c);
 
         for (String mstr: moves_str) {
             Move move = Move.fromCommand(mstr, 0);
@@ -373,19 +384,19 @@ public class Solver {
      * Solves a normalized 3x3 cube state
      * */
     @NotNull
-    public static Solution solveNormalised3(@NotNull String representation2d, @Nullable List<Move> normMoves, int maxDepth, long timeoutSecs) throws SolveException {
+    public static Solution solveNormalised3(@NotNull String representation2d, @Nullable List<Move> normMoves, int maxDepth, long timeoutSecs, @Nullable CancellationProvider c) throws SolveException, CancellationException {
         final long startMs = System.currentTimeMillis();
-        final String kociembaSolution = Search.solution(representation2d, maxDepth, timeoutSecs, false);
+        final String kociembaSolution = Search.solution(representation2d, maxDepth, timeoutSecs, false, c);
         final long msTaken = System.currentTimeMillis() - startMs;
 
-        final Solution sol = parseKociembaSolution(3, kociembaSolution, normMoves, maxDepth, timeoutSecs);
+        final Solution sol = parseKociembaSolution(3, kociembaSolution, normMoves, maxDepth, timeoutSecs, c);
         sol.mMsTaken = msTaken;
         return sol;
     }
 
     @NotNull
-    public static Solution solveNormalised3(@NotNull String representation2d, @Nullable List<Move> normMoves) {
-        return solveNormalised3(representation2d, normMoves, DEFAULT_3BY3_MAX_DEPTH, DEFAULT_3BY3_TIMEOUT_SECS);
+    public static Solution solveNormalised3(@NotNull String representation2d, @Nullable List<Move> normMoves, @Nullable CancellationProvider c) throws SolveException, CancellationException {
+        return solveNormalised3(representation2d, normMoves, DEFAULT_3BY3_MAX_DEPTH, DEFAULT_3BY3_TIMEOUT_SECS, c);
     }
 
 
@@ -393,40 +404,41 @@ public class Solver {
      * Solves a 3*3 cube
      * */
     @NotNull
-    public static Solution solve3(@NotNull CubeI c, int maxDepth, long timeoutSecs) throws SolveException {
-        if (c.n() != 3)
-            throw new SolveException(ERR_CODE_INVALID_CUBE, "Cube should be 3x3, given: " + c.n() + "x" + c.n());
+    public static Solution solve3(@NotNull Cube cube, boolean createCopy, int maxDepth, long timeoutSecs, @Nullable CancellationProvider c) throws SolveException, CancellationException {
+        if (cube.n() != 3)
+            throw new SolveException(ERR_CODE_INVALID_CUBE, "Cube should be 3x3, given: " + cube.n() + "x" + cube.n());
 
-        if (c.cacheIsSolved())
+        if (cube.cacheIsSolved())
             return Solution.empty(3);
 
         // copy
-        final Cube cube = new Cube(c);
+        final Cube cubeCopy = createCopy? new Cube(cube): cube;
 
         // Normalise
-        final List<Move> normMoves = normalizeCube(cube);
+        final List<Move> normMoves = normalizeCube(cubeCopy, c);
 
         // Solve
-        return solveNormalised3(cube.representation2D(), normMoves, maxDepth, timeoutSecs);
+        return solveNormalised3(cubeCopy.representation2D(), normMoves, maxDepth, timeoutSecs, c);
     }
 
 
     /**
      * Solves a 3*3 cube with default configurations
      *
-     * @see #solve3(CubeI, int, long)
+     * @see #solve3(Cube, boolean, int, long, CancellationProvider)
      * */
     @NotNull
-    public static Solution solve3(@NotNull CubeI c) {
-        return solve3(c, DEFAULT_3BY3_MAX_DEPTH, DEFAULT_3BY3_TIMEOUT_SECS);
+    public static Solution solve3(@NotNull Cube cube, boolean createCopy, @Nullable CancellationProvider c) throws SolveException, CancellationException {
+        return solve3(cube, createCopy, DEFAULT_3BY3_MAX_DEPTH, DEFAULT_3BY3_TIMEOUT_SECS, c);
     }
 
 
     private static final long SOLVE_DELAY_MS_MULTIPLIER = 500;
 
-    public static Solution solve(@NotNull CubeI cube) {
+    @NotNull
+    public static Solution solve(@NotNull Cube cube, boolean createCopy, @Nullable CancellationProvider c) throws SolveException, CancellationException {
         if (cube.n() == 3) {
-            return solve3(cube);
+            return solve3(cube, createCopy, c);
         }
 
         final List<Move> internalSol = cube.getInternalSolution();
@@ -439,10 +451,13 @@ public class Solver {
         }
 
         final long ms = (long) (SOLVE_DELAY_MS_MULTIPLIER * Math.sqrt(cube.n()) * Math.log10(internalSol.size()) * U.RANDOM.nextFloat(0.6f, 1.1f));
+        // Random sleeping
         try {
             Thread.sleep(ms);
         } catch (InterruptedException ignored) {
         }
+
+        Async.throwIfCancelled(c);
 
         final Solution sol = new Solution(cube.n(), internalSol);
         sol.mMsTaken = ms;

@@ -9,7 +9,7 @@ import java.awt.geom.Point2D;
 
 
 /**
- * Orthogonal Axis
+ * Orthogonal Axis<br>
  *
  * Enum ordinals are such that += 3 gives opposite axis
  * */
@@ -238,16 +238,16 @@ public enum Axis {
 
 
 
-    private static Axis[] sAllValues;
-    private static Axis[] sPositives;
-    private static Axis[] sNegatives;
+    private final static Axis[] sAllValues = values();
+    private final static Axis[] sPositives = { X, Y, Z };
+    private final static Axis[] sNegatives = { X_N, Y_N, Z_N };
 
     @NotNull
     @Unmodifiable
     public static Axis[] sharedValues() {
-        if (sAllValues == null) {
-            sAllValues = values();
-        }
+//        if (sAllValues == null) {
+//            sAllValues = values();
+//        }
 
         return sAllValues;
     }
@@ -259,29 +259,29 @@ public enum Axis {
     @NotNull
     @Unmodifiable
     public static Axis[] sharedPositives() {
-        if (sPositives == null) {
-            sPositives = new Axis[] { X, Y, Z };
-        }
+//        if (sPositives == null) {
+//            sPositives = new Axis[] { X, Y, Z };
+//        }
 
         return sPositives;
     }
 
     public static int positivesSize() {
-        return 3;
+        return sPositives.length;
     }
 
 
     @NotNull
     @Unmodifiable
     public static Axis[] sharedNegatives() {
-        if (sNegatives == null) {
-            sNegatives = new Axis[] { X_N, Y_N, Z_N };
-        }
+//        if (sNegatives == null) {
+//            sNegatives = new Axis[] { X_N, Y_N, Z_N };
+//        }
 
         return sNegatives;
     }
 
     public static int negativesSize() {
-        return 3;
+        return sNegatives.length;
     }
 }

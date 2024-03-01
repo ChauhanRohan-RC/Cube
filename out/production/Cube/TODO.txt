@@ -1,6 +1,7 @@
-// TODO: Lights for better 3D effect
+// TODO: Lights for better 3D effect [OPTIONAL]
+// TODO: Escape -> stop solving
 // TODO: better looking HUD, with Control class like Pendulum Wave
 // TODO: peasy cam pitch, yaw, roll
-// TODO: upgrade command line, enqueue tasks to UI thread
+// TODO: upgrade command line, enqueue tasks to UI thread, cube repr command
 // TODO: sounds, poly rhythm
 // TODO: Documentation

@@ -59,6 +59,23 @@ public class Move {
 
 
 
+    public static class CubieFilter implements Predicate<Cubie> {
+
+        public final int n;
+        @NotNull
+        private final Predicate<Cubie> filter;
+
+        private CubieFilter(int n, @NotNull Predicate<Cubie> filter) {
+            this.n = n;
+            this.filter = filter;
+        }
+
+        @Override
+        public boolean test(Cubie cubie) {
+            return filter.test(cubie);
+        }
+    }
+
     /* Moves */
 
 //    public static final String LEFT_CLOCKWISE = "l";
@@ -135,8 +152,9 @@ public class Move {
      * <pre>MOVES IN THIS MAP DO <b>NOT</b> HAVE LAYERS ASSIGNED. use {@link #withLayers(int[])} to use mapped moves</pre>
      * */
     @Nullable
-    @Unmodifiable
-    private static Map<String, Move> sMovesMap;
+    private static volatile Map<String, Move> sMovesMap;
+
+    private static final Object sMovesLock = new Object();
 
     @NotNull
     private static Map<String, Move> createMovesMap() {
@@ -202,11 +220,18 @@ public class Move {
     @NotNull
     @Unmodifiable
     private static Map<String, Move> getMovesMap() {
-        if (sMovesMap == null) {
-            sMovesMap = Collections.unmodifiableMap(createMovesMap());
+        Map<String, Move> map = sMovesMap;
+        if (map == null) {
+            synchronized (sMovesLock) {
+                map = sMovesMap;
+                if (map == null) {
+                    map = Collections.unmodifiableMap(createMovesMap());
+                    sMovesMap = map;
+                }
+            }
         }
 
-        return sMovesMap;
+        return map;
     }
 
     public static boolean isCommandChar(char c) {
@@ -511,7 +536,7 @@ public class Move {
     @NotNull
     public static Commutativity getCommutativity(@NotNull Move one, @NotNull Move two, int n) {
         final boolean eq;
-        if (one.layersCount() > 1 || two.layersCount() > 1 || !((eq = one.axis == two.axis) || one.axis == two.axis.invert())) {
+        if (one.layerCount() > 1 || two.layerCount() > 1 || !((eq = one.axis == two.axis) || one.axis == two.axis.invert())) {
             return Commutativity.NONE;
         }
 
@@ -786,8 +811,11 @@ public class Move {
     @NotNull
     private final int[] relLayerIndices;                    // Relative Layer Index from axis
 
+    /* Caches */
     @Nullable
-    private String mStrRepr;        // String Representation
+    private volatile String mCacheStringRepr;        // Cached String Representation
+    @Nullable
+    private volatile CubieFilter mCacheCubieFilter;     // Cached Cubie Filter
 
     public Move(@NotNull Axis axis, int quarters, int[] relLayerIndices) {
         this.axis = axis;
@@ -819,7 +847,7 @@ public class Move {
         return withQuarters(-quarters);
     }
 
-    public int layersCount() {
+    public int layerCount() {
         return relLayerIndices.length;
     }
 
@@ -853,28 +881,43 @@ public class Move {
     }
 
     @NotNull
-    public Predicate<Cubie> cubieFilter(int n) {
-        final int count = layersCount();
+    private CubieFilter createCubieFilter(int n) {
+        final int count = layerCount();
+        final Predicate<Cubie> filter;
+
         if (count <= 1) {
-            return CubeI.layerFilter(axis, n, primaryAbsLayer(n));
+            filter = CubeI.layerFilter(axis, n, primaryAbsLayer(n));
+        } else {
+            Predicate<Cubie> f = CubeI.layerFilter(axis, n, absLayerAt(0, n));
+
+            for (int i=1; i < count; i++) {
+                f = f.or(CubeI.layerFilter(axis, n, absLayerAt(i, n)));
+            }
+
+            filter = f;
         }
 
-        Predicate<Cubie> f = CubeI.layerFilter(axis, n, absLayerAt(0, n));
-
-        for (int i=1; i < count; i++) {
-            f = f.or(CubeI.layerFilter(axis, n, absLayerAt(i, n)));
-        }
-
-        return f;
+        return new CubieFilter(n, filter);
     }
 
+    public CubieFilter cubieFilter(int n) {
+        // Check cache filter
+        final CubieFilter cache = mCacheCubieFilter;
+        if (cache != null && cache.n == n)
+            return cache;
+
+        // Create new filter
+        final CubieFilter filter = createCubieFilter(n);
+        mCacheCubieFilter = filter;
+        return filter;
+    }
 
     public boolean relLayersEqual(@NotNull Move other) {
         return Arrays.equals(relLayerIndices, other.relLayerIndices);
     }
 
     public boolean absLayersEqual(@NotNull Move other, int n) {
-        if (layersCount() != other.layersCount())
+        if (layerCount() != other.layerCount())
             return false;
 
         return Arrays.equals(absLayerIndices(n), absLayerIndices(n));
@@ -944,11 +987,14 @@ public class Move {
     @Override
     @NotNull
     public String toString() {
-        if (mStrRepr == null) {
-            mStrRepr = toString(this);
+        final String cache = mCacheStringRepr;
+        if (cache != null) {
+            return cache;
         }
 
-        return mStrRepr;
+        final String repr = toString(this);
+        mCacheStringRepr = repr;
+        return repr;
     }
 
 }

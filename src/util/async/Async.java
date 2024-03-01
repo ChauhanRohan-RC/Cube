@@ -5,6 +5,7 @@ import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
 import java.awt.*;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -70,6 +71,11 @@ public class Async {
         uiPost(data, consumer, 0);
     }
 
+
+    public static void throwIfCancelled(@Nullable CancellationProvider c) throws CancellationException {
+        if (c != null && c.isCancelled())
+            throw CancellationProvider.EXCEPTION;
+    }
 
 
 

@@ -281,6 +281,11 @@ public class Config {
         return getConfigMapInternal().get(key);
     }
 
+    public String getValueString(@NotNull String key, String defaultValue) {
+        final String val = getConfigMapInternal().get(key);
+        return isEmpty(val)? defaultValue: val;
+    }
+
 
     /**
      * @return the value with desired type, or {@code null} if no key is not defined

@@ -1,5 +1,7 @@
 package gl.animation;
 
+import gl.animation.interpolator.Interpolator;
+import gl.animation.interpolator.LinearInterpolator;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -13,7 +15,7 @@ public abstract class Animator<T> {
     }
 
     @NotNull
-    public static final Interpolator DEFAULT_INTERPOLATOR = Interpolator.LINEAR;
+    public static final Interpolator DEFAULT_INTERPOLATOR = LinearInterpolator.getSingleton();
     public static final long DEFAULT_DURATION_MS = 300;
 
 
@@ -90,6 +92,7 @@ public abstract class Animator<T> {
     public final void setInterpolator(@Nullable Interpolator interpolator) {
         mInterpolator = interpolator;
     }
+
 
     @Nullable
     public Object getTag() {
