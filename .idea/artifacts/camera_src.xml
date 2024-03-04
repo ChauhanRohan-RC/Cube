@@ -1,0 +1,9 @@
+<component name="ArtifactManager">
+  <artifact name="camera-src">
+    <output-path>$PROJECT_DIR$/out/artifacts/camera_src</output-path>
+    <root id="root">
+      <element id="module-source" name="camera" />
+      <element id="module-source" name="math" />
+    </root>
+  </artifact>
+</component>

@@ -2,7 +2,10 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/Cube.iml" filepath="$PROJECT_DIR$/Cube.iml" />
+      <module fileurl="file://$PROJECT_DIR$/app/camera/camera.iml" filepath="$PROJECT_DIR$/app/camera/camera.iml" />
+      <module fileurl="file://$PROJECT_DIR$/app/cube/cube.iml" filepath="$PROJECT_DIR$/app/cube/cube.iml" />
+      <module fileurl="file://$PROJECT_DIR$/app/math/math.iml" filepath="$PROJECT_DIR$/app/math/math.iml" />
+      <module fileurl="file://$PROJECT_DIR$/app/util/util.iml" filepath="$PROJECT_DIR$/app/util/util.iml" />
     </modules>
   </component>
 </project>
