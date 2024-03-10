@@ -3,6 +3,9 @@ package util;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.awt.*;
+import java.awt.datatransfer.Clipboard;
+import java.awt.datatransfer.StringSelection;
 import java.text.NumberFormat;
 import java.util.regex.Pattern;
 
@@ -140,6 +143,27 @@ public class Format {
         }
 
         return nf.format(num);
+    }
+
+
+
+    public static Clipboard getSystemClipboard() {
+        Toolkit defaultToolkit = Toolkit.getDefaultToolkit();
+        return defaultToolkit.getSystemClipboard();
+    }
+
+    public static void copyToClipboard(String text) {
+        Clipboard clipboard = getSystemClipboard();
+        clipboard.setContents(new StringSelection(text), null);
+    }
+
+    public static boolean copyToClipboardNoThrow(String text) {
+        try {
+            copyToClipboard(text);
+            return true;
+        } catch (Exception ignored) {
+            return false;
+        }
     }
 
 }

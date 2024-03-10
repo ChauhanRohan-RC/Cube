@@ -9,56 +9,72 @@ import java.util.StringJoiner;
 public enum InterpolatorInfo {
 
     DEFAULT("default",
-            "Default",
-            null
+            null,
+            "Default"
     ),
 
     LINEAR("linear",
-            "Linear",
-            LinearInterpolator.getSingleton()
+            LinearInterpolator.getSingleton(),
+            "Linear"
     ),
 
     BOUNCE("bounce",
-            "Bounce",
-            BounceInterpolator.getSingleton()
+            BounceInterpolator.getSingleton(),
+            "Bounce"
     ),
 
     ACCELERATE("acc",
+            new AccelerateInterpolator(),
             "Accelerate",
-            new AccelerateInterpolator()
+            "Acc"
     ),
 
     DECELERATE("dec",
+            new DecelerateInterpolator(),
             "Decelerate",
-            new DecelerateInterpolator()
+            "Dec"
     ),
 
     ACCELERATE_DECELERATE("acd",
+            AccelerateDecelerateInterpolator.getSingleton(),
             "Accelerate Decelerate",
-            AccelerateDecelerateInterpolator.getSingleton()
+            "Acc-Dec"
     ),
 
     ANTICIPATE("anticipate",
-            "Anticipate",
-            new AnticipateInterpolator()
+            new AnticipateInterpolator(),
+            "Anticipate"
     ),
 
     OVERSHOOT("overshoot",
-            "Overshoot",
-            new AnticipateOvershootInterpolator()
+            new AnticipateOvershootInterpolator(),
+            "Overshoot"
     );
 
     @NotNull
     public final String key;
-    @NotNull
-    public final String displayName;
     @Nullable
     public final Interpolator interpolator;
 
-    InterpolatorInfo(@NotNull String key, @NotNull String displayName, @Nullable Interpolator interpolator) {
+    @NotNull
+    public final String displayName;
+    @Nullable
+    public final String shortDisplayName;
+
+    InterpolatorInfo(@NotNull String key, @Nullable Interpolator interpolator, @NotNull String displayName, @Nullable String shortDisplayName) {
         this.key = key;
-        this.displayName = displayName;
         this.interpolator = interpolator;
+        this.displayName = displayName;
+        this.shortDisplayName = shortDisplayName;
+    }
+
+    InterpolatorInfo(@NotNull String key, @Nullable Interpolator interpolator, @NotNull String displayName) {
+        this(key, interpolator, displayName, null);
+    }
+
+    @NotNull
+    public String getDisplayNamePreferShort() {
+        return shortDisplayName != null? shortDisplayName: displayName;
     }
 
     public static String getDisplayInfo() {

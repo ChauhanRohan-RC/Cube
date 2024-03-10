@@ -767,6 +767,10 @@ public class PCamera {
 	}
 
 
+	public boolean isInStartState() {
+		return distance == startDistance && center.equals(startCenter) && rotation.equals(startRotation);
+	}
+
 	public void reset(final long animationTimeInMillis) {
 		setState(getStartState(), animationTimeInMillis);
 	}

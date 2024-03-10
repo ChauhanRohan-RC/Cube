@@ -8,6 +8,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import processing.event.Event;
 import processing.event.KeyEvent;
+import solver.Solver;
 import util.Format;
 import util.U;
 
@@ -27,11 +28,12 @@ public enum Control {
                 if (ev.getKeyCode() == Control.ESCAPE_KEY_CODE_SUBSTITUTE) {
                     final boolean moves_cancelled = ui.cubeGL.cancelAllMoves() > 0;
                     final boolean sol_cancelled = ui.cancelSolve(true);
+                    final boolean sol_invalidated = ui.invalidateSolution() != null;
 
-                    if (moves_cancelled || sol_cancelled)
-                        return true;
+                    if (!(moves_cancelled || sol_cancelled || sol_invalidated)) {
+                        ui.exit();
+                    }
 
-                    ui.exit();
                     return true;
                 }
 
@@ -79,13 +81,13 @@ public enum Control {
                     if (mod == 0) {                     // reset cube state only
                         ui.cubeGL.resetCube(false);
                     } else if (mod == Event.SHIFT) {     // reset camera only
-                        ui.resetCamera(true, true);
+                        ui.resetCamera(true);
                     } else if (mod == Event.CTRL) {    // reset simulation only
                         ui.resetSimulation();
                     } else if (mod == (Event.CTRL | Event.SHIFT)) {
                         ui.cubeGL.resetCube(true);
                         ui.resetSimulation();
-                        ui.resetCamera(true, true);
+                        ui.resetCamera(true);
                     } else {
                         return false;
                     }
@@ -190,7 +192,7 @@ public enum Control {
     DRAW_CUBE_AXES("Axes",
             "Show/Hide cube axes.",
             ui -> ui.isDrawCubeAxesEnabled() ? "ON" : "OFF",
-            "shf-A",
+            "Shf-A",
             "",
             (ui, ev) -> {
                 final int mod = ev.getModifiers();
@@ -202,7 +204,7 @@ public enum Control {
                 return false;
             }, false),
 
-    ANIMATION_SPEED("Anim Speed",
+    ANIMATION_SPEED("Speed",
             "Move Animation Speed, in percentage.",
             ui -> String.format("%s%% (%d ms)",
                     Format.nf001(ui.cubeGL.getMoveQuarterSpeedPercent()),
@@ -220,9 +222,9 @@ public enum Control {
                 return false;
             }, true),
 
-    ANIMATION_INTERPOLATOR("Interpolator",
+    ANIMATION_INTERPOLATOR("Interp",
             "Change Move Animation Interpolator.",
-            ui -> ui.getCurrentMoveGlInterpolatorInfo(InterpolatorInfo.DEFAULT).displayName,
+            ui -> ui.getCurrentMoveGlInterpolatorInfo(InterpolatorInfo.DEFAULT).getDisplayNamePreferShort(),
             "I",
             "",
             (ui, ev) -> {
@@ -238,27 +240,45 @@ public enum Control {
 
     MOVES("Moves",
             "Cube moves",
-            ui -> "",
+            ui -> String.valueOf(ui.cubeGL.getCube().getMovesInStackCount()),
             "[Ctr]-[Shf]-[U R F D L B]",
             "[U | R | F | D | L | B] keys -> Clockwise Move\nShift-[U | R | F | D | L | B] -> Anticlockwise Move\nCtrl-[U | R | F | D | L | B] -> 2-Slice Move\nCtrl-Shift-[U | R | F | D | L | B] -> 180° Move",
             (ui, ev) -> {
                 final Move move = createMove(ev.getKeyCode(), ev.getModifiers());
                 return move != null && ui.cubeGL.applyMove(move);
             },
-            false),
+            false, true, null),
 
-    FINISH_ALL_MOVES("Finish/Cancel Moves",
-            "Finish or Cancel all running and pending moves",
+    FINISH_ALL_MOVES("Finish Moves",
+            "Finish all running and pending moves",
             ui -> {
                 final int count = ui.cubeGL.runningMovesCount() + ui.cubeGL.pendingMovesCount();
                 return count > 0 ? String.valueOf(count) : "";
             },
-            "[Shf]-X",
+            "X",
             "",
             (ui, ev) -> {
                 final int mod = ev.getModifiers();
-                if (ev.getKeyCode() == java.awt.event.KeyEvent.VK_X && (mod == 0 || mod == Event.SHIFT)) {
-                    ui.cubeGL.finishAllMoves(mod == Event.SHIFT);
+                if (ev.getKeyCode() == java.awt.event.KeyEvent.VK_X && (mod == 0)) {
+                    ui.cubeGL.finishAllMoves(false);
+                    return true;
+                }
+
+                return false;
+            }, false),
+
+    CANCEL_ALL_MOVES("Cancel Moves",
+            "Cancel all running and pending moves",
+            ui -> {
+                final int count = ui.cubeGL.runningMovesCount() + ui.cubeGL.pendingMovesCount();
+                return count > 0 ? String.valueOf(count) : "";
+            },
+            "Shf-X",
+            "Shift-X",
+            (ui, ev) -> {
+                final int mod = ev.getModifiers();
+                if (ev.getKeyCode() == java.awt.event.KeyEvent.VK_X && (mod == Event.SHIFT)) {
+                    ui.cubeGL.finishAllMoves(true);
                     return true;
                 }
 
@@ -297,7 +317,7 @@ public enum Control {
                 }
 
                 return false;
-            }, false),
+            }, false, true, null),
 
     SOLVE_OR_APPLY("Solve",
             "Solve or apply solution.",
@@ -311,15 +331,21 @@ public enum Control {
                     return true;
                 }
 
+                final Solver.Solution solution = ui.getCurrentSolution();
+                if (solution != null && ev.getKeyCode() == java.awt.event.KeyEvent.VK_C && mod == Event.CTRL) {
+                    Format.copyToClipboardNoThrow(solution.getSequence());
+                    return true;
+                }
+
                 return false;
-            }, false),
+            }, false, true, null),
 
 
     /* Camera Controls */
 
     FREE_CAMERA("Camera",
             "Toggle camera mode between FREE and LOCKED.",
-            ui -> ui.isFreeCameraEnabled() ? "Free" : "Locked",
+            ui -> ui.isFreeCameraEnabled() ? "FREE" : "LOCKED",
             "V",
             "",
             (ui, ev) -> {
@@ -497,47 +523,71 @@ public enum Control {
     }
 
 
-//    public static final Control[] CONTROLS_MAIN1 = {
-//            CUBE_SIZE,
-//            RESET,
-//            DRAW_ONLY_BOBS
-//    };
-//
-//    public static final Control[] CONTROLS_MAIN2 = {
-//            SOUND,
-//            POLY_RHYTHM
-//    };
-//
-//    public static final Control[] CONTROLS_MAIN3 = {
-//            HUD_ENABLED,
-//            SHOW_KEY_BINDINGS
-//    };
-//
-//    // Controls to show even when HUD is disabled
-//    public static final Control[] CONTROLS_HUD_DISABLED = {
-//            HUD_ENABLED
-//    };
-//
-//
-//    public static final Control[] CONTROLS_STATUS1 = {
-//            SIMULATION_SPEED,
-//            GRAVITY,
-//            DRAG
-//    };
-//
-//    public static final Control[] CONTROLS_STATUS2 = {
-//            PENDULUM_MASS,
-//            PENDULUM_START_ANGLE,
-//            WAVE_PERIOD,
-//            MIN_OSCILLATIONS_IN_WAVE_PERIOD,
-//            OSCILLATION_STEP_PER_PENDULUM
-//    };
-//
-//    public static final Control[] CONTROLS_CAMERA = {
-//            CAMERA_ROTATE_X,
-//            CAMERA_ROTATE_Y,
-//            CAMERA_ROTATE_Z
-//    };
+    public static final Control[] CONTROLS_TOP_RIGHT1 = {
+            CUBE_SIZE,
+            RESET
+    };
+
+    public static final Control[] CONTROLS_TOP_RIGHT2 = {
+            HUD_ENABLED,
+            SHOW_KEY_BINDINGS
+    };
+
+    // Must be in reverse order
+    public static final Control[] CONTROLS_BOTTOM_RIGHT = {
+            SAVE_FRAME,
+            POLY_RHYTHM,
+            SOUND
+    };
+
+    // Must be in reverse order
+    public static final Control[] CONTROLS_BOTTOM_LEFT1 = {
+            MOVES
+    };
+
+    // Must be in reverse order
+    public static final Control[] CONTROLS_BOTTOM_LEFT2 = {
+            UNDO_LAST_MOVE
+    };
+
+    // Must be in reverse order
+    public static final Control[] CONTROLS_BOTTOM_LEFT3 = {
+            CANCEL_ALL_MOVES,
+            FINISH_ALL_MOVES,
+            MOVE_ANIMATIONS,
+            SCRAMBLE,
+            SOLVE_OR_APPLY
+    };
+
+
+    // Controls to show even when HUD is disabled
+    public static final Control[] CONTROLS_HUD_DISABLED = {
+            HUD_ENABLED
+    };
+
+    public static final Control[] CONTROLS_STATUS_LEFT = {
+    };
+
+    public static final Control[] CONTROLS_STATUS_RIGHT = {
+            CUBE_DRAW_SCALE,
+            ANIMATION_SPEED,
+            ANIMATION_INTERPOLATOR
+    };
+
+    public static final Control[] CONTROLS_CAMERA1 = {
+            CAMERA_ROTATE_X,
+            CAMERA_ROTATE_Y,
+            CAMERA_ROTATE_Z
+    };
+
+    public static final Control[] CONTROLS_CAMERA2 = {
+            FREE_CAMERA,
+            DRAW_CUBE_AXES
+    };
+
+    public static final Control[] CONTROLS_FULLSCREEN_WINDOW = {
+            EXPAND_FULLSCREEN
+    };
 
 
     @Nullable

@@ -34,8 +34,7 @@ import util.async.CancellationProvider;
 import util.async.Canceller;
 
 import java.awt.*;
-import java.util.Collection;
-import java.util.LinkedList;
+import java.util.*;
 import java.util.List;
 import java.util.concurrent.CancellationException;
 import java.util.function.Consumer;
@@ -132,7 +131,6 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
 
     /* Camera */
     private volatile boolean mFreeCamera = GLConfig.DEFAULT_FREE_CAMERA;
-    private volatile float mCubeDrawScale = GLConfig.CUBE_DRAW_SCALE_DEFAULT;
     private PCamera mCamera;
 
     /* Window */
@@ -146,6 +144,8 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
     private boolean mPolyRhythmEnabled = GLConfig.DEFAULT_POLY_RHYTHM_ENABLED;
     @Nullable
     private volatile MidiNotePlayer mSoundPlayer;
+    private float mCurMidiNote = GLConfig.MIDI_NOTE_MIN;
+    private float mMidiNoteStep = GLConfig.MIDI_NOTE_STEP;
 
     public CubePUi3D(@Nullable Cube cube) {
         final Config config = R.CONFIG;
@@ -159,6 +159,11 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
 
         // Config
         applyConfig(config);
+
+        // preload
+        if (mSoundEnabled) {
+            getSoundPlayer();
+        }
 
         // Listeners At Last
         cubeGL.ensureListener(this);
@@ -225,7 +230,7 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
     }
 
     public boolean shouldDrawAxesInHUD() {
-        return true;
+        return mCurSolution == null && !isSolving();        // Interferes with solution status
     }
 
     public boolean supportsSurfaceLocationSetter() {
@@ -265,20 +270,20 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
         return getCube().representation2D();
     }
 
-    @Nullable
-    public String getStatusText() {
-        return GLConfig.getStatusText(width, height, frameRate, frameCount, mSolving, mCurSolution, "S");
-    }
-
-    @Nullable
-    public String getSecStatusText() {
-        return GLConfig.getSecStatusText(cubeGL.getMoveQuarterSpeedPercent());
-    }
-
-    @Nullable
-    public String getCubeStateText() {
-        return GLConfig.getCubeStateText(getCube().n(), isCubeLocked());
-    }
+//    @Nullable
+//    public String getStatusText() {
+//        return GLConfig.getStatusText(width, height, frameRate, frameCount, mSolving, mCurSolution, "S");
+//    }
+//
+//    @Nullable
+//    public String getSecStatusText() {
+//        return GLConfig.getSecStatusText(cubeGL.getMoveQuarterSpeedPercent());
+//    }
+//
+//    @Nullable
+//    public String getCubeStateText() {
+//        return GLConfig.getCubeStateText(getCube().n(), isCubeLocked());
+//    }
 
 
 
@@ -314,7 +319,7 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
         // Camera and Levitation Animator
         resetLevitationAnimator();
         syncFreeCameraEnabled(mFreeCamera, false, false);
-        tasks.add(() -> resetCamera(false, false));
+        tasks.add(() -> resetCamera(false));
 
         // Fullscreen does not expand to entire screen with P2D and P3D renderers. THis hack solves the problem
         if (isFullscreen()) {       // (P2D.equals(sketchRenderer()) || P3D.equals(sketchRenderer()))
@@ -392,7 +397,7 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
 
         translate(o.x, o.y + curLevitation, o.z);
 
-        final float scale = cubeScale(width, height, n) * getCubeDrawScale();
+        final float scale = cubeScale(width, height, n);
         scale(scale * (GLConfig.CUBE_INVERT_X ? -1 : 1), scale * (GLConfig.CUBE_INVERT_Y ? -1 : 1), scale * (GLConfig.CUBE_INVERT_Z ? -1 : 1));
 
         if (isDrawCubeAxesEnabled()) {
@@ -403,22 +408,35 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
         popMatrix();
 
         /* HUD */
-        final PCamera camera = getCamera();
-        camera.beginHUD();
+        beginHUD();
         drawHUD();
-        camera.endHUD();
+        endHUD();
 
         postDraw();
     }
 
+    protected void postDraw() {
+    }
+
+
+    /* ................................... HUD .............................. */
+
+    private int mSolverDrawTrigger;
+
+    protected void beginHUD() {
+        getCamera().beginHUD();
+    }
+
+    protected void endHUD() {
+        getCamera().endHUD();
+    }
 
     protected void drawHUD() {
-        /* ................................... HUD .............................. */
-
         pushStyle();
 
         final boolean hudEnabled = isHudEnabled();
         final boolean showKeyBindings = areKeyBindingsShown();
+        final boolean drawAxes = shouldDrawAxesInHUD();
         final Predicate<Control> keyBindingsFilter = c -> showKeyBindings || c.alwaysShowKeyBinding;
 
         final float padx = 20;
@@ -429,127 +447,273 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
 
         /* TOP-LEFT SIDE: Axes and Camera ................................................................... */
         final PCamera cam = getCamera();
-        final boolean drawAxes = shouldDrawAxesInHUD();
-        float y_1 = pady;
+
+        float y_left_top = pady;
+        float y_right_top = pady;
+        float y_right_bottom = height - pady;
+        float y_left_bottom = y_right_bottom;
 
         if (drawAxes) {
-            y_1 = drawHUDAxes(cam.getRotationsF(), padx, y_1, padx/1.5f, pady/1.5f, lenAxis);
-            y_1 += (pady * 2);      // vgap
+            y_left_top = drawHUDAxes(cam.getRotationsF(), padx, y_left_top, padx/1.5f, pady/1.5f, lenAxis);
+            y_left_top += (pady * 2);      // vgap
         }
 
+        if (hudEnabled) {
+            y_left_top = drawMainControlsAlignLeft(Control.CONTROLS_CAMERA1, y_left_top, true, padx, 0, vgap_main, keyBindingsFilter);
+            y_left_top += pady;   // vgap
 
-//        final float cameraModeTextSize = getTextSize(GLConfig.CAMERA_MODE_TEXT_SIZE);
-//        final float cubeLockedTextSize = getTextSize(GLConfig.CUBE_STATE_TEXT_SIZE);
+            y_left_top = drawMainControlsAlignLeft(Control.CONTROLS_CAMERA2, y_left_top, true, padx, 0, vgap_main, keyBindingsFilter);
+            y_left_top += (pady * 1.5f);   // vgap
 
-        // Camera
-//        if (GLConfig.SHOW_CAMERA_MODE) {
-//            pushStyle();
-//            fill(GLConfig.FG_CAMERA_MODE.getRGB());
-//            textFont(pdSansMedium, cameraModeTextSize);
-//            textAlign(LEFT, TOP);
-//            text(GLConfig.getCameraModeText(mFreeCamera, "V"), h_offset, v_offset);
-//            popStyle();
-//        }
+            if (isFullscreen()) {
+                y_left_top = drawMainControlsAlignLeft(Control.CONTROLS_FULLSCREEN_WINDOW, y_left_top, true, padx, 0, vgap_main, keyBindingsFilter);
+                y_left_top += (pady * 1.5f);   // vgap
+            }
+        }
 
-        // Cube State
-//        if (GLConfig.SHOW_CUBE_STATE) {
-//            final String stateText = getCubeStateText();
-//            if (Format.notEmpty(stateText)) {
-//                pushStyle();
-//                fill(GLConfig.FG_CUBE_STATE.getRGB());
-//                textFont(pdSans, cubeLockedTextSize);
-//                textAlign(RIGHT, TOP);
-//                text(stateText, width - h_offset, v_offset);
-//                popStyle();
-//            }
-//        }
+        /* TOP-RIGHT and BOTTOM: HUD and Status ................................................... */
+        final float statusTopY;
 
-        // Controls
-//        if (areKeyBindingsShown()) {
-//            pushStyle();
-//            final float titleTextSize = getTextSize(GLConfig.CONTROLS_DES_TITLE_TEXT_SIZE);
-//            final float titleY = cameraModeTextSize + v_offset * 4;
-//
-//            fill(GLConfig.FG_CONTROLS_DES_TITLE.getRGB());
-//            textFont(pdSansMedium, titleTextSize);
-//            textAlign(LEFT, TOP);
-//            text("Move Controls", h_offset * 3, titleY);
-//            textAlign(RIGHT, TOP);
-//            text("View Controls", width - h_offset * 3, titleY);
-//
-//            fill(GLConfig.FG_CONTROLS_DES.getRGB());
-//            textFont(pdSans, getTextSize(GLConfig.CONTROLS_DES_TEXT_SIZE));
-//
-//            final float desY = titleY + titleTextSize + v_offset * 1.5f;
-//            textAlign(LEFT, TOP);
-//            text(R.DES_CONTROLS_MOVES + "\n\n" + R.DES_CONTROLS_SOLVE, h_offset, desY);
-//
-//            textAlign(RIGHT, TOP);
-//            text(R.DES_CONTROLS_CUBE_CAMERA, width - h_offset, desY);
-//            popStyle();
-//        }
+        if (hudEnabled) {
+            // TOP-RIGHT: Main Controls 1
+            y_right_top = drawMainControlsAlignRight(Control.CONTROLS_TOP_RIGHT1, y_right_top, true, padx, 0, vgap_main, keyBindingsFilter);
+            y_right_top += pady;   // vgap
 
+            // TOP-RIGHT: Main Controls 2
+            y_right_top = drawMainControlsAlignRight(Control.CONTROLS_TOP_RIGHT2, y_right_top, true, padx, 0, vgap_main, keyBindingsFilter);
+            y_right_top += (pady * 1.5f);   // vgap
 
-//        final float statusTextSize = getTextSize(GLConfig.STATUS_TEXT_SIZE);
-//
-//        // Status bar
-//        if (GLConfig.SHOW_STATUS) {
-//            final String statusText = getStatusText();
-//            if (Format.notEmpty(statusText)) {
-//                pushStyle();
-//                fill(GLConfig.FG_STATUS_BAR.getRGB());
-//                textSize(statusTextSize);
-//                textAlign(LEFT, BOTTOM);
-//                text(statusText, h_offset, height - v_offset);
-//                popStyle();
-//            }
-//        }
-//
-//        // Last Move
-//        if (GLConfig.SHOW_LAST_MOVE) {
-//            final Move lastMove = cubeGL.getCube().peekLastMove();
-//            if (lastMove != null) {
-//                pushStyle();
-//                fill(GLConfig.FG_LAST_MOVE.getRGB());
-//                textSize(getTextSize(GLConfig.LAST_MOVE_TEXT_SIZE));
-//                textAlign(LEFT, BOTTOM);
-//                text(GLConfig.getLastMoveText(lastMove, "Ctrl-Z"), h_offset, height - statusTextSize - v_offset * 2);
-//                popStyle();
-//            }
-//        }
-//
-//        // Secondary Status
-//        if (GLConfig.SHOW_SEC_STATUS) {
-//            final String secStatus = getSecStatusText();
-//            if (secStatus != null) {
-//                pushStyle();
-//                fill(GLConfig.FG_SEC_STATUS.getRGB());
-//                textSize(getTextSize(GLConfig.SEC_STATUS_TEXT_SIZE));
-//                textAlign(RIGHT, BOTTOM);
-//                text(secStatus, width - h_offset, height - statusTextSize - v_offset * 2);
-//                popStyle();
-//            }
-//        }
-//
-//        // Cur Move (MIDDLE)
-//        if (GLConfig.SHOW_CUR_MOVE) {
-//            final Move curMove = cubeGL.getYoungestRunningMove();
-//            if (curMove != null) {
-//                pushStyle();
-//                fill(GLConfig.FG_CUR_MOVE.getRGB());
-//                textSize(getTextSize(GLConfig.CUR_MOVE_TEXT_SIZE));
-//                textAlign(CENTER, BOTTOM);
-//                text(curMove.toString(), width / 2f, height - statusTextSize - v_offset * 2);
-//                popStyle();
-//            }
-//        }
+            // BOTTOM-LEFT and BOTTOM-RIGHT: status 1 and status 2
+            final String status_delimiter = "     |     ";
+            statusTopY = drawStatusControls(Control.CONTROLS_STATUS_LEFT, Control.CONTROLS_STATUS_RIGHT, status_delimiter, y_right_bottom, padx, pady, vgap_status, showKeyBindings);
+
+            if (Control.CONTROLS_STATUS_LEFT.length > 0) {
+                y_left_bottom = statusTopY;
+                y_left_bottom -= (pady * 1.5f);    // vgap
+            }
+
+            if (Control.CONTROLS_STATUS_RIGHT.length > 0) {
+                y_right_bottom = statusTopY;
+                y_right_bottom -= (pady * 1.5f);    // vgap
+            }
+
+            // BOTTOM-RIGHT: Main Controls 3
+            y_right_bottom = drawMainControlsAlignRight(Control.CONTROLS_BOTTOM_RIGHT, y_right_bottom, false, padx, 0, vgap_main, keyBindingsFilter);
+            y_right_bottom -= (pady * 1.5f);    // vgap
+
+            // BOTTOM-LEFT: Main Controls 1
+            y_left_bottom = drawMainControlsAlignLeft(Control.CONTROLS_BOTTOM_LEFT1, y_left_bottom, false, padx, 0, vgap_main, keyBindingsFilter);
+            y_left_bottom -= pady;    // vgap
+
+            // BOTTOM-LEFT: Main Controls 2
+            y_left_bottom = drawMainControlsAlignLeft(Control.CONTROLS_BOTTOM_LEFT2, y_left_bottom, false, padx, 0, vgap_main, keyBindingsFilter);
+            y_left_bottom -= pady;    // vgap
+
+            // BOTTOM-LEFT: Main Controls 3
+            y_left_bottom = drawMainControlsAlignLeft(Control.CONTROLS_BOTTOM_LEFT3, y_left_bottom, false, padx, 0, vgap_main, keyBindingsFilter);
+            y_left_bottom -= (pady * 1.5f);    // vgap
+        } else {
+            // TOP-RIGHT: Controls to show even when HUD is disabled
+            y_right_top = drawMainControlsAlignRight(Control.CONTROLS_HUD_DISABLED, y_right_top, true, padx, 0, vgap_main, keyBindingsFilter);
+            y_right_top += (pady * 1.5f);   // vgap
+
+            statusTopY = height;
+        }
+
+        // Currently Running Move
+        if (GLConfig.SHOW_CUR_MOVE) {
+            drawCurrentMove(cubeGL.getYoungestRunningMove(), height - pady, false);
+        }
+
+        // Solver
+        drawSolverPages(padx, pady);
+
+        // End
+        popStyle();
     }
 
 
-    protected void postDraw() {
+    private void drawSolverPages(float padx, float pady) {
+        // Solver
+        final boolean solving = isSolving();
+        final Solver.Solution solution = mCurSolution;
+
+        if (solving || solution != null) {
+            final int n = getN();
+
+            fill(GLConfig.BG_OVERLAY.getRGB());
+            rectMode(CORNER);
+            rect(0, 0, width, height);
+
+            if (solving) {
+                final int mills = millis();
+                if (mSolverDrawTrigger == 0)
+                    mSolverDrawTrigger = mills;
+
+                final long pauseDelta = mills - mSolverDrawTrigger;
+                final boolean draw = (pauseDelta >= 0 && pauseDelta < 500 /* ms to draw */);
+                if (draw) {
+                    // Draw things which depends on Solve state
+                    final String text_main = "SOLVING  " + n + "x" + n;
+                    final String text_sub = "Press [" + Control.ESCAPE.keyBindingLabel + "] to cancel";
+
+                    drawSolverPage(text_main, text_sub);
+                } else if (pauseDelta > 0) {
+                    mSolverDrawTrigger = mills + 400 /* ms to hide */;
+                }
+            } else if (solution.isEmpty()) {
+                final String text_main = "ALREADY  SOLVED";
+                final String text_sub = "Press any key to continue";
+
+                drawSolverPage(text_main, text_sub);
+            } else {
+                // A healthy solution
+                final String title = n + "x" + n + "  SOLVED";
+
+                textSize(getTextSize(GLConfig.TEXT_SIZE_HUGE1));
+                final float titleH = textAscent() + textDescent();
+                final float titleW = textWidth(title);
+                float y = pady * 3;
+
+                // Title
+                fill(GLConfig.ACCENT_HIGHLIGHT.getRGB());
+                textAlign(CENTER, TOP);
+                text(title, width / 2f, y);
+
+                // Title Lines
+                stroke(GLConfig.ACCENT_HIGHLIGHT.getRGB());
+                strokeWeight(2);
+                final float line_padx = padx * 2, line_y = y + (titleH / 2);
+                line(line_padx, line_y, (width / 2f) - (titleW / 2f) - line_padx, line_y);
+                line((width / 2f) + (titleW / 2f) + line_padx, line_y, width - line_padx, line_y);
+
+                y += (titleH + (pady * 3));
+
+                // Entries ..........................................................
+                final String delimiter = "    ";
+                final String time_taken_label = "Time Taken";
+                final String seq_label = "Moves (" + solution.moveCount() + ")";
+
+                final float ts_label = getTextSize(GLConfig.TEXT_SIZE_SMALL1);
+                final float ts_value = getTextSize(GLConfig.TEXT_SIZE_NORMAL);
+                textSize(ts_label);
+
+                final float max_label_w = max(textWidth(time_taken_label), textWidth(seq_label));
+                final float label_h = textAscent() + textDescent();
+                final float vgap = pady;
+
+                // Labels
+                fill(GLConfig.ACCENT_HIGHLIGHT.getRGB());
+                textAlign(LEFT, TOP);
+                text(time_taken_label, line_padx, y);
+                text(seq_label, line_padx, y + label_h + vgap);
+
+                // Values
+                textSize(ts_value);
+                final String time_taken_val = solution.getMsTaken() + "  ms";
+
+                final float max_seq_w = width - (line_padx * 2) - max_label_w - textWidth(delimiter.repeat(2));
+                final String seq_val = ellipMoveSequence(solution.movesUnmodifiable.listIterator(), solution.moveCount(), max_seq_w);
+
+                fill(GLConfig.FG_DARK.getRGB());
+                textAlign(LEFT, BOTTOM);
+                y += label_h;
+                text(delimiter + time_taken_val, line_padx + max_label_w, y);
+                y += vgap + label_h;
+                text(delimiter + seq_val, line_padx + max_label_w, y);
+
+                // Info...........................
+                final String[] info_labels = {
+                        Control.SOLVE_OR_APPLY.keyBindingLabel,
+                        Control.ESCAPE.keyBindingLabel,
+                        "Ctrl-C"
+                };
+
+                final String[] info_vals = {
+                        "Apply solution",
+                        "Cancel solution",
+                        "Copy to clipboard"
+                };
+
+                final float ts_info_label = getTextSize(GLConfig.TEXT_SIZE_SMALL1);
+                final float ts_info_val = getTextSize(GLConfig.TEXT_SIZE_NORMAL);
+                textSize(max(ts_info_label, ts_info_val));
+                final float info_e_height = textAscent() + textDescent();
+
+                textSize(ts_info_label);
+                float max_info_label_w = 0;
+                for (String l: info_labels) {
+                    max_info_label_w = max(max_info_label_w, textWidth(l));
+                }
+
+                final float info_y = height - pady;
+                final float info_vgap = pady / 2;
+
+                textAlign(LEFT, BOTTOM);
+                fill(GLConfig.FG_MAIN_CONTROLS_KEY_LABEL.getRGB());
+                for (int i=0; i < info_labels.length; i++) {
+                    text(info_labels[info_labels.length - i - 1], line_padx, info_y - (i * (info_e_height + info_vgap)));
+                }
+
+                textSize(ts_info_val);
+                textAlign(LEFT, BOTTOM);
+                fill(GLConfig.FG_DARK.getRGB());
+                for (int i=0; i < info_vals.length; i++) {
+                    text(delimiter + info_vals[info_vals.length - i - 1], line_padx + max_info_label_w, info_y - (i * (info_e_height + info_vgap)));
+                }
+            }
+        } else {
+            mSolverDrawTrigger = 0;
+        }
     }
 
 
+    private void drawSolverPage(@NotNull String text_main, @Nullable String text_sub) {
+        textSize(getTextSize(GLConfig.TEXT_SIZE_HUGE3));
+        final float height_main = textAscent() + textDescent();
+
+        // Main
+        fill(GLConfig.ACCENT_HIGHLIGHT.getRGB());
+        textAlign(CENTER, CENTER);
+        text(text_main, width / 2f, height / 2f);
+
+        if (Format.isEmpty(text_sub))
+            return;
+
+        // Sub
+        textSize(getTextSize(GLConfig.TEXT_SIZE_LARGE1));
+        fill(GLConfig.FG_DARK.getRGB());
+        textAlign(CENTER, TOP);
+        text(text_sub, width / 2f, (height / 2f) + height_main);
+    }
+
+    // set textSize() before calling this method
+    @NotNull
+    private String ellipMoveSequence(@NotNull ListIterator<Move> moves_itr, int totalMovesCount, float maxSequenceWidth) {
+        maxSequenceWidth -= textWidth(totalMovesCount + " + moves");    // to compensate for suffix
+
+        final StringBuilder seq = new StringBuilder();
+        float seq_w = 0;
+
+        while (moves_itr.hasNext()) {
+            String v = (moves_itr.nextIndex() == 0? "": Move.SEQUENCE_DELIMITER) + moves_itr.next().toString();
+
+            float w = textWidth(v);
+            if (seq_w + w > maxSequenceWidth)
+                break;
+
+            seq.append(v);
+            seq_w += w;
+        }
+
+        if (moves_itr.hasNext()) {
+            seq.append(" + ")
+                    .append(Math.abs(totalMovesCount - moves_itr.previousIndex() /* this move was excluded in the while loop*/))
+                    .append(" moves");
+        }
+
+        return seq.toString();
+    }
 
 
     private void drawMainXAxis(float positiveLen, float negativeLen, float arrowHalfLen, boolean drawPositiveArrow, boolean drawNegativeArrow) {
@@ -644,6 +808,236 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
         popMatrix();
 
         return topY + (lenAxis * 2);
+    }
+
+
+
+    private record ControlDrawInfo(@NotNull Control control, boolean showKeyBinding, String keyBindingLabel, String formattedValue) {
+    }
+
+    /**
+     * @return if alignTop is true -> bottomY of the bounding box, else topY of the bounding box
+     * */
+    private float drawMainControlsAlignRight(@NotNull Control[] controls, float startY, boolean alignTop, float padx, float hgap, float vgap, @NotNull Predicate<Control> showKeyBindingsFilter) {
+        final String label_value_delimiter = "      ";
+        final String label_key_label_delimiter = "   ";
+
+        textSize(getTextSize(max(GLConfig.TEXT_SIZE_MAIN_CONTROLS_LABEL, GLConfig.TEXT_SIZE_MAIN_CONTROLS_KEY_LABEL, GLConfig.TEXT_SIZE_MAIN_CONTROLS_VALUE)));
+        final float entry_height = textAscent() + textDescent();
+        float max_val_width = 0;
+
+        final ArrayList<ControlDrawInfo> list = new ArrayList<>();
+
+        for (Control c: controls) {
+            final boolean showKey = showKeyBindingsFilter.test(c);
+            final String val = c.getFormattedValue(this);
+            if (!showKey && Format.isEmpty(val))
+                continue;
+
+            final String keyLabel = showKey? c.keyBindingLabel : "";
+            max_val_width = max(max_val_width, textWidth(val));
+
+            list.add(new ControlDrawInfo(c, showKey, keyLabel, val));
+        }
+
+        max_val_width += textWidth(label_value_delimiter);
+
+        final float x1 = width - padx;
+        final float x2 = x1 - max_val_width - hgap;
+
+        for (int i=0; i < list.size(); i++) {
+            final ControlDrawInfo info = list.get(i);
+            final String label = info.control.label;
+            final String keyLabel = info.keyBindingLabel;
+            final String val = info.formattedValue;
+
+            final float y1 = startY + (alignTop? 1: -1) * (i * (entry_height + vgap));
+
+            // Value
+            textSize(getTextSize(GLConfig.TEXT_SIZE_MAIN_CONTROLS_VALUE));
+            fill(GLConfig.FG_MAIN_CONTROLS_VALUE.getRGB());
+            textAlign(RIGHT, alignTop? TOP: BOTTOM);
+            text(label_value_delimiter + val, x1, y1);
+
+            // Key Label
+            final float keyLabelW;
+            if (info.showKeyBinding) {
+                textSize(getTextSize(GLConfig.TEXT_SIZE_MAIN_CONTROLS_KEY_LABEL));
+                fill(GLConfig.FG_MAIN_CONTROLS_KEY_LABEL.getRGB());
+                textAlign(RIGHT, BOTTOM);
+                text(label_key_label_delimiter + keyLabel, x2, y1 + (alignTop? entry_height: 0));
+                keyLabelW = textWidth(label_key_label_delimiter + keyLabel);
+            } else {
+                keyLabelW = 0;
+            }
+
+            // Label
+            textSize(getTextSize(GLConfig.TEXT_SIZE_MAIN_CONTROLS_LABEL));
+            fill((info.control.labelColorOverride != null? info.control.labelColorOverride: GLConfig.FG_MAIN_CONTROLS_LABEL).getRGB());
+            textAlign(RIGHT, BOTTOM);
+            text(label, x2 - keyLabelW, y1 + (alignTop? entry_height: 0));
+        }
+
+        final float my_height = ((list.size() - 1) * (entry_height + vgap)) + entry_height;
+        return startY + (alignTop? 1: -1) * my_height;
+    }
+
+
+    private float drawMainControlsAlignLeft(@NotNull Control[] controls, float startY, boolean alignTop, float padx, float hgap, float vgap, @NotNull Predicate<Control> showKeyBindingsFilter) {
+        final String label_value_delimiter = "      ";
+        final String label_key_label_delimiter = "   ";
+
+        textSize(getTextSize(max(GLConfig.TEXT_SIZE_MAIN_CONTROLS_LABEL, GLConfig.TEXT_SIZE_MAIN_CONTROLS_KEY_LABEL, GLConfig.TEXT_SIZE_MAIN_CONTROLS_VALUE)));
+        final float entry_height = textAscent() + textDescent();
+
+        textSize(getTextSize(max(GLConfig.TEXT_SIZE_MAIN_CONTROLS_LABEL, GLConfig.TEXT_SIZE_MAIN_CONTROLS_KEY_LABEL)));
+
+        final ArrayList<ControlDrawInfo> list = new ArrayList<>(controls.length + 2);
+
+        float max_label_width = 0;
+        for (Control c: controls) {
+            boolean showKey = showKeyBindingsFilter.test(c);
+            final String value = c.getFormattedValue(this);
+
+            if (!showKey && Format.isEmpty(value))
+                continue;
+
+            final String keyLabel = showKey? c.keyBindingLabel : "";
+            max_label_width = max(max_label_width, textWidth(c.label + label_key_label_delimiter + keyLabel));
+
+            list.add(new ControlDrawInfo(c, showKey, keyLabel, value));
+        }
+
+        final float x2 = padx + max_label_width + hgap;
+
+        for (int i=0; i < list.size(); i++) {
+            final ControlDrawInfo info = list.get(i);
+            final String label = info.control.label;
+            final String keyLabel = info.keyBindingLabel;
+            final String val = info.formattedValue;
+
+            final float y1 = startY + (alignTop? 1: -1) * (i * (entry_height + vgap));
+
+            // Label
+            textSize(getTextSize(GLConfig.TEXT_SIZE_MAIN_CONTROLS_LABEL));
+            fill((info.control.labelColorOverride != null? info.control.labelColorOverride: GLConfig.FG_MAIN_CONTROLS_LABEL).getRGB());
+            textAlign(LEFT, BOTTOM);
+            text(label, padx, y1 + (alignTop? entry_height: 0));
+            final float labelW = textWidth(label);
+
+            // Key Label
+            if (info.showKeyBinding) {
+                textSize(getTextSize(GLConfig.TEXT_SIZE_MAIN_CONTROLS_KEY_LABEL));
+                fill(GLConfig.FG_MAIN_CONTROLS_KEY_LABEL.getRGB());
+                textAlign(LEFT, BOTTOM);
+                text(label_key_label_delimiter + keyLabel, padx + labelW, y1 + (alignTop? entry_height: 0));
+            }
+
+            // Value
+            textSize(getTextSize(GLConfig.TEXT_SIZE_MAIN_CONTROLS_VALUE));
+            fill(GLConfig.FG_MAIN_CONTROLS_VALUE.getRGB());
+            textAlign(LEFT, alignTop? TOP: BOTTOM);
+            text(label_value_delimiter + val, x2, y1);
+        }
+
+        final float my_height = ((list.size() - 1) * (entry_height + vgap)) + entry_height;
+        return startY + (alignTop? 1: -1) * my_height;
+    }
+
+    /**
+     * @return top y coordinate of the bounding rectangle
+     * */
+    private float drawStatusControls(@NotNull Control[] controls1, @NotNull Control[] controls2, @NotNull String delimiter, float bottomY, float padx, float pady, float vgap, boolean showKeyBindings) {
+        final String[] values1 = new String[controls1.length];
+        final String[] values2 = new String[controls2.length];
+
+        for (int i=0; i < controls1.length; i++) {
+            Control c = controls1[i];
+            values1[i] = c.label + " : " + c.getFormattedValue(this);
+        }
+
+        for (int i=0; i < controls2.length; i++) {
+            Control c = controls2[i];
+            values2[i] = c.label + " : " + c.getFormattedValue(this);
+        }
+
+        final String status1 = join(values1, delimiter);
+        final String status2 = join(values2, delimiter);
+
+        textSize(getTextSize(GLConfig.TEXT_SIZE__STATUS_CONTROLS));
+
+        // Status1
+        fill(GLConfig.FG__STATUS_CONTROLS.getRGB());
+        textAlign(LEFT, BOTTOM);
+        text(status1, padx, bottomY);
+
+        // Status 2
+        textAlign(RIGHT, BOTTOM);
+        text(status2, width - padx, bottomY);
+
+        final float statusTextHeight = textAscent() + textDescent();
+        float statusTopY = bottomY - statusTextHeight;        // Top Y to return
+
+        if (showKeyBindings) {
+//            textSize(getTextSize(GLConfig.TEXT_SIZE__STATUS_CONTROLS));         // redundant
+
+            final float bottomYKeys = statusTopY - vgap;
+
+            final float delW = textWidth(delimiter);
+            final float[] center1Pos = new float[values1.length];
+            final float[] center2Pos = new float[values2.length];
+
+            float xs1 = padx;
+            for (int i=0; i < values1.length; i++) {
+                if (i != 0)
+                    xs1 += delW;
+
+                float tw = textWidth(values1[i]);
+                center1Pos[i] = xs1 + (tw / 2);
+
+                xs1 += tw;
+            }
+
+            final float status2W = textWidth(status2);
+            float xs2 = width - padx - status2W;
+            for (int i=0; i < values2.length; i++) {
+                if (i != 0)
+                    xs2 += delW;
+
+                float tw = textWidth(values2[i]);
+                center2Pos[i] = xs2 + (tw / 2);
+
+                xs2 += tw;
+            }
+
+            textSize(getTextSize(GLConfig.TEXT_SIZE_CONTROL_KEY_BINDING_LABEL));
+            fill(GLConfig.FG_CONTROL_KEY_BINDING_LABEL.getRGB());
+            textAlign(CENTER, BOTTOM);
+
+            for (int i=0; i < controls1.length; i++) {
+                text(controls1[i].keyBindingLabel, center1Pos[i], bottomYKeys);
+            }
+
+            for (int i=0; i < controls2.length; i++) {
+                text(controls2[i].keyBindingLabel, center2Pos[i], bottomYKeys);
+            }
+
+            // final top y
+            statusTopY = bottomYKeys - (textAscent() + textDescent());
+        }
+
+
+        return statusTopY;
+    }
+
+    private void drawCurrentMove(@Nullable Move curMove, float y, boolean alignTop) {
+        if (curMove == null)
+            return;
+
+        fill(GLConfig.FG_CUR_MOVE.getRGB());
+        textSize(getTextSize(GLConfig.TEXT_SIZE_CUR_MOVE));
+        textAlign(CENTER, alignTop? TOP: BOTTOM);
+        text(curMove.toString(), width / 2f, y);
     }
 
     /* Window ........................................................... */
@@ -746,6 +1140,8 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
 
         saveFrame(file_name);
         U.println(R.SHELL_ROOT + "Frame saved to file: " + file_name);
+
+        playNextMidiNote();
     }
 
 
@@ -759,20 +1155,40 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
         mLockCubeWhileSolving = lockCubeWhileSolving;
     }
 
+    protected void onSolvingFlagChanged(boolean solving) {
+        playNextMidiNote();
+    }
+
     public final boolean isSolving() {
         return mSolving;
     }
 
     private void setSolvingFlag(boolean solving) {
+        final boolean old = mSolving;
         mSolving = solving;
 
         // Lock cube accordingly
         cubeGL.getCube().setLocked(solving && isLockCubeWhileSolvingEnabled());
+
+        if (old != solving) {
+            onSolvingFlagChanged(solving);
+        }
     }
 
 
-    private void invalidateSolution() {
+    @Nullable
+    public Solver.Solution getCurrentSolution() {
+        return mCurSolution;
+    }
+
+    /**
+     * @return Solution which is invalidated, or {@code null} if there was no solution
+     * */
+    @Nullable
+    public final Solver.Solution invalidateSolution() {
+        final Solver.Solution cur_sol = mCurSolution;
         mCurSolution = null;
+        return cur_sol;
     }
 
     /**
@@ -804,10 +1220,9 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
 //        }
 
         // If Has a solution, apply it
-        final Solver.Solution curSolution = mCurSolution;
-        invalidateSolution();
+        final Solver.Solution curSolution = invalidateSolution();
         if (!(curSolution == null || curSolution.isEmpty()) && curSolution.n == getN()) {
-            cubeGL.applySequence(curSolution.moves);
+            cubeGL.applySequence(curSolution.movesUnmodifiable);
             return;
         }
 
@@ -868,6 +1283,8 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
 
 
     private void onSolveCancelled(@Nullable CancellationException exc) {
+        U.printerrln(R.SHELL_SOLVER + "Solver Cancelled");
+
         invalidateSolution();
     }
 
@@ -950,9 +1367,15 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
     public void keyPressed(KeyEvent event) {
         super.keyPressed(event);
         mKeyEvent = event;
-
         if (event == null)
             return;
+
+        // Key traps
+        final Solver.Solution solution = mCurSolution;
+        if (solution != null && solution.isEmpty()) {
+            invalidateSolution();       // Invalidate empty solution on any key press
+            return;
+        }
 
         // Handle Discrete Controls
         for (Control control: Control.getValuesShared()) {
@@ -995,7 +1418,13 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
 
         // Double mouse click  (left, right or middle)
         if (event.getCount() == 2) {
-            resetCamera(true, true);
+            if (!getCamera().isInStartState()) {
+                resetCamera(true);
+                return;
+            }
+
+            toggleFullscreenExpanded(false);
+
 //            if (getCamera().insideViewport(event.getX(), event.getY())) {
 //                resetCamera(true, true);
 //            }
@@ -1046,7 +1475,7 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
     /* HUD and Controls  .......................................................... */
 
     protected void onHudEnabledChanged(boolean hudEnabled) {
-
+        playNextMidiNote();
     }
 
     public final boolean isHudEnabled() {
@@ -1067,7 +1496,7 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
 
 
     protected void onShowKeyBindingsChanged(boolean showKeyBindings) {
-
+        playNextMidiNote();
     }
 
     public final boolean areKeyBindingsShown() {
@@ -1098,7 +1527,7 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
                 .setAttackTime(0.01f)
                 .setSustainTime(0.1f)
                 .setSustainLevel(0.5f)
-                .setReleaseTime(0.25f);
+                .setReleaseTime(0.2f);
     }
 
     @NotNull
@@ -1126,9 +1555,32 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
         getSoundPlayer().play(midiNote);
     }
 
+    private float nextMidiNote() {
+        final float old = mCurMidiNote;
+
+        // Change in a cyclic way
+        mCurMidiNote += mMidiNoteStep;
+        if (mCurMidiNote >= GLConfig.MIDI_NOTE_MAX) {
+            mCurMidiNote = GLConfig.MIDI_NOTE_MAX;
+            mMidiNoteStep *= -1;
+        } else if (mCurMidiNote <= GLConfig.MIDI_NOTE_MIN) {
+            mCurMidiNote = GLConfig.MIDI_NOTE_MIN;
+            mMidiNoteStep *= -1;
+        }
+
+        return old;
+    }
+
+    private void playNextMidiNote() {
+        if (!isSoundEnabled())
+            return;
+
+        getSoundPlayer().play(nextMidiNote());
+    }
+
 
     protected void onSoundEnabledChanged(boolean soundEnabled) {
-
+        playNextMidiNote();
     }
 
     public final boolean isSoundEnabled() {
@@ -1149,7 +1601,7 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
 
 
     protected void onPolyRhythmEnabledChanged(boolean polyRhythmEnabled) {
-
+        playNextMidiNote();
     }
 
     public final boolean isPolyRhythmEnabled() {
@@ -1172,7 +1624,7 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
     /* Cube Axes and Draw scale  ........................................................ */
 
     protected void onDrawCubeAxesChanged(boolean drawCubeAxes) {
-
+        playNextMidiNote();
     }
 
     public boolean isDrawCubeAxesEnabled() {
@@ -1193,29 +1645,30 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
 
 
 
+
     protected void onCubeDrawScaleChanged(float prevDrawScale, float newDrawScale) {
 
     }
 
     public final float getCubeDrawScale() {
-        return mCubeDrawScale;
-//        return mFreeCam? 1 : cubeScale;
+        final PCamera cam = getCamera();
+        return (float) (cam.getStartDistance() / cam.getDistance());
     }
 
     /**
      * @return new cube draw scale, which might be different from the drawScale argument
      * */
     public float setCubeDrawScale(float drawScale) {
-//        if (mFreeCam)
-//            return;
-
-        final float cur_scale = mCubeDrawScale;
+        final float cur_scale = getCubeDrawScale();
         final float new_scale = constrain(drawScale, GLConfig.CUBE_DRAW_SCALE_MIN, GLConfig.CUBE_DRAW_SCALE_MAX);
 
         if (cur_scale == new_scale)
             return cur_scale;
 
-        mCubeDrawScale = new_scale;
+        final PCamera cam = getCamera();
+        final double new_dis = cam.getStartDistance() / new_scale;
+
+        cam.setDistance(new_dis, 300);
         onCubeDrawScaleChanged(cur_scale, new_scale);
         return new_scale;
     }
@@ -1263,10 +1716,20 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
 
     @NotNull
     private PCamera createNewCamera(@Nullable Rotation startRotation) {
-        PCamera _camera = new PCamera(this, createInitialCameraState(startRotation));
+        final CameraState startState = createInitialCameraState(startRotation);
+
+        final PCamera _camera = new PCamera(this, startState);
         _camera.setResetOnDoubleClick(false);       // will handle myself
         _camera.setDefaultResetAnimationMills(GLConfig.CAMERA_RESET_ANIMATION_MILLS);
+        onCameraInitialStateChanged(_camera, GLConfig.CUBE_DRAW_SCALE_DEFAULT);
         return _camera;
+    }
+
+    private static void onCameraInitialStateChanged(@NotNull PCamera camera, float currentDrawScale) {
+        camera.setMinimumDistance(camera.getStartDistance() / GLConfig.CUBE_DRAW_SCALE_MAX, 0);
+        camera.setMaximumDistance(camera.getStartDistance() / GLConfig.CUBE_DRAW_SCALE_MIN, 0);
+
+        camera.setDistance(camera.getStartDistance() / currentDrawScale, 0);
     }
 
     @NotNull
@@ -1288,24 +1751,27 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
     }
 
     private void updateCameraInitialState() {
-        getCamera().setStartState(createInitialCameraState(null));
+        final PCamera cam = getCamera();
+        final float drawScale = getCubeDrawScale();
+
+        cam.setStartState(createInitialCameraState(null));
+        onCameraInitialStateChanged(cam, drawScale);
     }
 
     private void updateCameraOnWindowResize() {
         final PCamera cam = getCamera();
-        final CameraState state = cam.getState();
 
         // Update viewport and initial state
         cam.setViewport(0, 0, width, height);
-        updateCameraInitialState();
+        updateCameraInitialState();         // also updates distance according to current drawScale
 
         // Update only LookAt from current state
-        cam.setState(state.withCenter(cam.getStartLookAt()), 0);
+        cam.lookAt(cam.getStartLookAt(), 0);
     }
 
 
     protected void onFreeCameraEnabledChanged(boolean freeCamera) {
-
+        playNextMidiNote();
     }
 
     public boolean isFreeCameraEnabled() {
@@ -1340,11 +1806,7 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
     }
 
 
-    public final void resetCamera(boolean resetDrawScale, boolean animate) {
-        if (resetDrawScale) {
-            resetCubeDrawScale();
-        }
-
+    public final void resetCamera(boolean animate) {
         getCamera().reset(animate);
     }
 
@@ -1414,21 +1876,23 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
         cancelSolve(true);
         invalidateSolution();
         updateCameraInitialState();
+
+        playNextMidiNote();
     }
 
     @Override
     public void onMoveAnimationEnabledChanged(@NotNull CubeGL cubeGL, boolean moveAnimationEnabled) {
-
+        playNextMidiNote();
     }
 
     @Override
     public void onMoveGlConfigurerChanged(@NotNull CubeGL cubeGL, @Nullable Consumer<MoveGL> old, @Nullable Consumer<MoveGL> _new) {
-
+        playNextMidiNote();
     }
 
     @Override
     public void onMoveGlInterpolatorOverrideChanged(@NotNull CubeGL cubeGL, @Nullable Interpolator old, @Nullable Interpolator _new) {
-
+        playNextMidiNote();
     }
 
     @Override
@@ -1443,7 +1907,9 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
 
     @Override
     public void onMoveFinished(@NotNull MoveGL moveGL, Animator.@NotNull Finish how) {
-
+        if (how == Animator.Finish.NORMAL && isSoundEnabled()) {
+            playNextMidiNote();
+        }
     }
 
     @Override

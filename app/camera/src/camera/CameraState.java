@@ -2,6 +2,7 @@ package camera;
 
 import java.io.Serial;
 import java.io.Serializable;
+import java.util.Objects;
 
 import math.geometry.Rotation;
 import math.geometry.RotationOrder;
@@ -199,6 +200,20 @@ public class CameraState implements Serializable {
 		PCamera.apply(g, center, rotation, distance);
 	}
 
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass())
+			return false;
+
+		CameraState that = (CameraState) o;
+		return Double.compare(distance, that.distance) == 0 && Objects.equals(rotation, that.rotation) && Objects.equals(center, that.center);
+	}
+
+	@Override
+	public int hashCode() {
+		return Objects.hash(rotation, center, distance);
+	}
 
 
 	/* Builders */

@@ -2,6 +2,7 @@ package math.geometry;
 
 import java.io.Serial;
 import java.io.Serializable;
+import java.util.Objects;
 
 /**
  * This class implements rotations in a three-dimensional space.
@@ -1108,4 +1109,20 @@ public class Rotation implements Serializable {
 				+ " in {0} iterations", new Object[] { Integer.toString(i - 1) });
 	}
 
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o)
+			return true;
+		if (o == null || getClass() != o.getClass())
+			return false;
+
+		Rotation rotation = (Rotation) o;
+		return Double.compare(q0, rotation.q0) == 0 && Double.compare(q1, rotation.q1) == 0 && Double.compare(q2, rotation.q2) == 0 && Double.compare(q3, rotation.q3) == 0;
+	}
+
+	@Override
+	public int hashCode() {
+		return Objects.hash(q0, q1, q2, q3);
+	}
 }

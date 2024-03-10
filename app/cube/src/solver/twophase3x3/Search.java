@@ -190,6 +190,8 @@ public class Search {
 			Async.throwIfCancelled(canceller);
 
 			do {
+				Async.throwIfCancelled(canceller);
+
 				if ((depthPhase1 - n > minDistPhase1[n + 1]) && !busy) {
 
 					if (ax[n] == 0 || ax[n] == 3)// Initialize next move
@@ -259,6 +261,8 @@ public class Search {
 		int mv = 0, d1 = 0, d2 = 0;
 		int maxDepthPhase2 = Math.min(10, maxDepth - depthPhase1);// Allow only max 10 moves in phase2
 		for (int i = 0; i < depthPhase1; i++) {
+			Async.throwIfCancelled(canceller);
+
 			mv = 3 * ax[i] + po[i] - 1;
 			URFtoDLF[i + 1] = CoordCube.URFtoDLF_Move[URFtoDLF[i]][mv];
 			FRtoBR[i + 1] = CoordCube.FRtoBR_Move[FRtoBR[i]][mv];
@@ -270,6 +274,8 @@ public class Search {
 			return -1;
 
 		for (int i = 0; i < depthPhase1; i++) {
+			Async.throwIfCancelled(canceller);
+
 			mv = 3 * ax[i] + po[i] - 1;
 			URtoUL[i + 1] = CoordCube.URtoUL_Move[URtoUL[i]][mv];
 			UBtoDF[i + 1] = CoordCube.UBtoDF_Move[UBtoDF[i]][mv];
@@ -296,6 +302,8 @@ public class Search {
 			Async.throwIfCancelled(canceller);
 
 			do {
+				Async.throwIfCancelled(canceller);
+
 				if ((depthPhase1 + depthPhase2 - n > minDistPhase2[n + 1]) && !busy) {
 
 					if (ax[n] == 0 || ax[n] == 3)// Initialize next move
@@ -308,6 +316,9 @@ public class Search {
 					}
 				} else if ((ax[n] == 0 || ax[n] == 3) ? (++po[n] > 3) : ((po[n] = po[n] + 2) > 3)) {
 					do {// increment axis
+
+						Async.throwIfCancelled(canceller);
+
 						if (++ax[n] > 5) {
 							if (n == depthPhase1) {
 								if (depthPhase2 >= maxDepthPhase2)

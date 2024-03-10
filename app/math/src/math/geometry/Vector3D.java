@@ -4,6 +4,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.Serial;
 import java.io.Serializable;
+import java.util.Objects;
 
 /**
  * This class represents an <strong>immutable vector in 3D space</strong>
@@ -440,4 +441,20 @@ public class Vector3D implements Serializable {
 				* v2.y - v1.y * v2.x);
 	}
 
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o)
+			return true;
+		if (o == null || getClass() != o.getClass())
+			return false;
+
+		Vector3D vector3D = (Vector3D) o;
+		return Double.compare(x, vector3D.x) == 0 && Double.compare(y, vector3D.y) == 0 && Double.compare(z, vector3D.z) == 0;
+	}
+
+	@Override
+	public int hashCode() {
+		return Objects.hash(x, y, z);
+	}
 }

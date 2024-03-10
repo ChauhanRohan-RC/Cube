@@ -80,7 +80,7 @@ public class Solver {
 
         @NotNull
         @Unmodifiable
-        public final List<Move> moves;         // list of moves from start -> goal state
+        public final List<Move> movesUnmodifiable;         // list of moves from start -> goal state
 
         @Nullable
         private String mSequence;                // cached string representation of moves sequence
@@ -89,7 +89,7 @@ public class Solver {
 
         public Solution(int n, @NotNull List<Move> moves, @Nullable String sequence) {
             this.n = n;
-            this.moves = Collections.unmodifiableList(moves);
+            this.movesUnmodifiable = Collections.unmodifiableList(moves);
             mSequence = sequence;
         }
 
@@ -105,27 +105,27 @@ public class Solver {
         @NotNull
         public final String getSequence() {
             if (mSequence == null) {
-                mSequence = Move.sequence(moves);
+                mSequence = Move.sequence(movesUnmodifiable);
             }
 
             return mSequence;
         }
 
         public final boolean isEmpty() {
-            return moves.isEmpty();
+            return movesUnmodifiable.isEmpty();
         }
 
         public final int moveCount() {
-            return moves.size();
+            return movesUnmodifiable.size();
         }
 
         @NotNull
         public List<Move> getHead(int maxMoves) {
-            if (moves.size() <= maxMoves) {
-                return moves;
+            if (movesUnmodifiable.size() <= maxMoves) {
+                return movesUnmodifiable;
             }
 
-            return moves.subList(0, maxMoves);
+            return movesUnmodifiable.subList(0, maxMoves);
         }
 
         @NotNull
@@ -138,12 +138,12 @@ public class Solver {
 
         @NotNull
         public List<Move> getTail(int maxMoves) {
-            final int s = moves.size();
+            final int s = movesUnmodifiable.size();
             if (s <= maxMoves) {
-                return moves;
+                return movesUnmodifiable;
             }
 
-            return moves.subList(s - maxMoves, s);
+            return movesUnmodifiable.subList(s - maxMoves, s);
         }
 
         @NotNull
@@ -161,7 +161,7 @@ public class Solver {
                 return true;
 
             if (o instanceof Solution other) {
-                return moves.equals(other.moves);
+                return movesUnmodifiable.equals(other.movesUnmodifiable);
             }
 
             return false;
@@ -169,7 +169,7 @@ public class Solver {
 
         @Override
         public int hashCode() {
-            return moves.hashCode();
+            return movesUnmodifiable.hashCode();
         }
 
         @Override
@@ -447,7 +447,6 @@ public class Solver {
         }
 
         if (internalSol.isEmpty()) {
-            U.printerrln("Internal solution is empty ................"); // todo
             return Solution.empty(cube.n());
         }
 

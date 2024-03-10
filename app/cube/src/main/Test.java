@@ -154,7 +154,7 @@ public class Test {
 
         Solver.Solution solution = Solver.solve3(cube, true, 30, 5, null);
 
-        for (Move m: solution.moves) {
+        for (Move m: solution.movesUnmodifiable) {
             cube.applyMove(m);
         }
 

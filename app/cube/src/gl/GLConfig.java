@@ -6,12 +6,9 @@ import gl.animation.interpolator.Interpolator;
 import math.geometry.Rotation;
 import math.geometry.RotationOrder;
 import model.cube.CubeI;
-import model.cubie.Move;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import solver.Solver;
 import sound.MidiNotePlayer;
-import util.Format;
 import util.U;
 
 import java.awt.*;
@@ -20,9 +17,6 @@ public class GLConfig {
 
     public static final float FRAME_RATE = 120;
     public static final boolean DEFAULT_WINDOW_IN_SCREEN_CENTER = true;
-
-    public static final boolean DEFAULT_SOUND_ENABLED = true;
-    public static final boolean DEFAULT_POLY_RHYTHM_ENABLED = MidiNotePlayer.DEFAULT_POLY_RHYTHM_ENABLED;
 
     public static final boolean DEFAULT_LOCK_CUBE_WHILE_SOLVING = true;
 
@@ -41,6 +35,13 @@ public class GLConfig {
     public static final float CUBIE_STICKER_STROKE_WEIGHT = 0.075f;
     public static final float CUBIE_STICKER_CORNERS_RADIUS_WEIGHT = 0.08f;
     public static final float CUBIE_STICKER_ELEVATION_WEIGHT = 0.0005f;
+
+    /* Sound */
+    public static final boolean DEFAULT_SOUND_ENABLED = true;
+    public static final boolean DEFAULT_POLY_RHYTHM_ENABLED = MidiNotePlayer.DEFAULT_POLY_RHYTHM_ENABLED;
+    public static final float MIDI_NOTE_MIN = 80;
+    public static final float MIDI_NOTE_MAX = 100;
+    public static final float MIDI_NOTE_STEP = 1;
 
     /* Camera and Scale */
 
@@ -61,8 +62,8 @@ public class GLConfig {
     public static final long CAMERA_RESET_ANIMATION_MILLS = 300;
     public static final long CAMERA_ROTATIONS_ANIMATION_MILLS = 250;        // set to 0 for no animation
 
-    public static final float CUBE_DRAW_SCALE_MIN = 0.05f;
-    public static final float CUBE_DRAW_SCALE_MAX = 5;
+    public static final float CUBE_DRAW_SCALE_MIN = 0.2f;
+    public static final float CUBE_DRAW_SCALE_MAX = 4f;
     public static final float CUBE_DRAW_SCALE_DEFAULT = 1;
 
     public static final float CUBE_DRAW_SCALE_PERCENT__STEP_CONTINUOUS = 0.1f;    // 0.1%
@@ -160,13 +161,13 @@ public class GLConfig {
     public static final Color BG_DARK = new Color(0, 0, 0, 255);
     public static final Color BG_MEDIUM = new Color(28, 28, 28, 255);
     public static final Color BG_LIGHT = new Color(45, 45, 45, 255);
+    public static final Color BG_OVERLAY = new Color(0, 0, 0, 160);
 
     public static final Color FG_DARK = new Color(255, 255, 255, 255);
     public static final Color FG_MEDIUM = new Color(230, 230, 230, 255);
     public static final Color FG_LIGHT = new Color(200, 200, 200, 255);
     public static final Color ACCENT = new Color(107, 196, 255, 255);
-    public static final Color ACCENT_HIGHLIGHT = new Color(255, 219, 77, 255);
-
+    public static final Color ACCENT_HIGHLIGHT = new Color(255, 221, 83, 255);
 
     public static final Color COLOR_UP = new Color(255, 219, 77, 255);
     public static final Color COLOR_RIGHT = new Color(116, 255, 77, 255);
@@ -175,6 +176,7 @@ public class GLConfig {
     public static final Color COLOR_LEFT = new Color(77, 157, 255, 255);
     public static final Color COLOR_BACK = new Color(255, 126, 29, 255);
     public static final Color COLOR_INTERNAL = new Color(43, 43, 43, 255);
+
 
 //    public static final Color COLOR_RIGHT = new Color(255, 126, 29, 255);
 //    public static final Color COLOR_FRONT = new Color(116, 255, 77, 255);
@@ -213,98 +215,120 @@ public class GLConfig {
         return color;
     }
 
+
     public static float getTextSize(float width, float height, float size) {
         return Math.min(width, height) * size;
     }
 
+    public static final float TEXT_SIZE_HUGE3 = 0.066f;
+    public static final float TEXT_SIZE_HUGE2 = 0.062f;
+    public static final float TEXT_SIZE_HUGE1 = 0.058f;
+    public static final float TEXT_SIZE_LARGE3 = 0.034f;
+    public static final float TEXT_SIZE_LARGE2 = 0.028f;
+    public static final float TEXT_SIZE_LARGE1 = 0.026f;
+    public static final float TEXT_SIZE_NORMAL = 0.023f;
+    public static final float TEXT_SIZE_SMALL1 = 0.019f;
+    public static final float TEXT_SIZE_SMALL2 = 0.0175f;
+    public static final float TEXT_SIZE_SMALL3 = 0.016f;
+    public static final float TEXT_SIZE_TINY = 0.014f;
 
+    public static final float TEXT_SIZE_CONTROL_KEY_BINDING_LABEL = TEXT_SIZE_SMALL3;
+    public static final Color FG_CONTROL_KEY_BINDING_LABEL = new Color(204, 178, 60, 255);
 
+    public static final float TEXT_SIZE__STATUS_CONTROLS = TEXT_SIZE_SMALL2;
+    public static final Color FG__STATUS_CONTROLS = FG_DARK;
 
-    /* Status */
+    public static final float TEXT_SIZE_MAIN_CONTROLS_LABEL = TEXT_SIZE_SMALL3;
+    public static final float TEXT_SIZE_MAIN_CONTROLS_KEY_LABEL = TEXT_SIZE_SMALL2;
+    public static final float TEXT_SIZE_MAIN_CONTROLS_VALUE = TEXT_SIZE_SMALL1;
+    public static final Color FG_MAIN_CONTROLS_LABEL = FG_MEDIUM;
+    public static final Color FG_MAIN_CONTROLS_KEY_LABEL = FG_CONTROL_KEY_BINDING_LABEL;
+    public static final Color FG_MAIN_CONTROLS_VALUE = ACCENT_HIGHLIGHT;
 
     public static final boolean SHOW_CUR_MOVE = true;
-    public static final float CUR_MOVE_TEXT_SIZE = 0.062f;
-    public static final Color FG_CUR_MOVE = FG_DARK;
-
-    public static final boolean SHOW_SEC_STATUS = true;
-    public static final float SEC_STATUS_TEXT_SIZE = 0.018f;
-    public static final Color FG_SEC_STATUS = FG_DARK;
-
-    public static final boolean SHOW_LAST_MOVE = true;
-    public static final float LAST_MOVE_TEXT_SIZE = 0.02f;
-    public static final Color FG_LAST_MOVE = FG_DARK;
-
-    public static final boolean SHOW_STATUS = true;
-    public static final float STATUS_TEXT_SIZE = 0.024f;
-    public static final Color FG_STATUS_BAR = ACCENT;
-
-    public static final boolean SHOW_CAMERA_MODE = true;
-    public static final float CAMERA_MODE_TEXT_SIZE = 0.02f;
-    public static final Color FG_CAMERA_MODE = ACCENT_HIGHLIGHT;
-
-    public static final boolean SHOW_CUBE_STATE = true;
-    public static final float CUBE_STATE_TEXT_SIZE = 0.024f;
-    public static final Color FG_CUBE_STATE = ACCENT_HIGHLIGHT;
-
-    public static final float CONTROLS_DES_TITLE_TEXT_SIZE = 0.0195f;
-    public static final Color FG_CONTROLS_DES_TITLE = ACCENT;
-    public static final float CONTROLS_DES_TEXT_SIZE = 0.018f;
-    public static final Color FG_CONTROLS_DES = FG_MEDIUM;
+    public static final float TEXT_SIZE_CUR_MOVE = TEXT_SIZE_HUGE1;
+    public static final Color FG_CUR_MOVE = ACCENT;
 
 
-    public static final String STATUS_SOLVING = "Solving";
-    public static final String STATUS_ALREADY_SOLVED = "Solved";
-    public static final String STATUS_SOLUTION_SEQ = "Solution";
-    public static final String DOT = ".";
+//    public static final boolean SHOW_SEC_STATUS = true;
+//    public static final float SEC_STATUS_TEXT_SIZE = 0.018f;
+//    public static final Color FG_SEC_STATUS = FG_DARK;
 
-    @Nullable
-    public static String getStatusText(float width, float height, float frameRate, int frameCount, boolean solving, @Nullable Solver.Solution solution, @Nullable String runSolutionKeyBinding) {
-        if (solving) {
-            final float rate = frameRate / 5;       // 5 = (dots per sec)
-            final float count = (frameCount % (rate * 4)) / rate;           // 4 = no of dots + 1
-            return STATUS_SOLVING + DOT.repeat((int) count);
-        }
+//    public static final boolean SHOW_LAST_MOVE = true;
+//    public static final float LAST_MOVE_TEXT_SIZE = 0.02f;
+//    public static final Color FG_LAST_MOVE = FG_DARK;
+//
+//    public static final boolean SHOW_STATUS = true;
+//    public static final float STATUS_TEXT_SIZE = 0.024f;
+//    public static final Color FG_STATUS_BAR = ACCENT;
+//
+//    public static final boolean SHOW_CAMERA_MODE = true;
+//    public static final float CAMERA_MODE_TEXT_SIZE = 0.02f;
+//    public static final Color FG_CAMERA_MODE = ACCENT_HIGHLIGHT;
+//
+//    public static final boolean SHOW_CUBE_STATE = true;
+//    public static final float CUBE_STATE_TEXT_SIZE = 0.024f;
+//    public static final Color FG_CUBE_STATE = ACCENT_HIGHLIGHT;
+//
+//    public static final float CONTROLS_DES_TITLE_TEXT_SIZE = 0.0195f;
+//    public static final Color FG_CONTROLS_DES_TITLE = ACCENT;
+//    public static final float CONTROLS_DES_TEXT_SIZE = 0.018f;
+//    public static final Color FG_CONTROLS_DES = FG_MEDIUM;
 
-        if (solution != null) {
-            if (solution.isEmpty())
-                return STATUS_ALREADY_SOLVED;
 
-            final int maxCount = (int) (width / (getTextSize(width, height, STATUS_TEXT_SIZE) * 2)) - 10;
-            final String seq;
-            if (solution.moveCount() <= maxCount) {
-                seq = solution.getSequence();
-            } else {
-                seq = solution.getHeadSequence(maxCount) + " + " + Math.abs(solution.moveCount() - maxCount) + " moves";
-            }
+//    public static final String STATUS_SOLVING = "Solving";
+//    public static final String STATUS_ALREADY_SOLVED = "Solved";
+//    public static final String STATUS_SOLUTION_SEQ = "Solution";
+//    public static final String DOT = ".";
 
-            return concatKeyBinding(STATUS_SOLUTION_SEQ, seq, runSolutionKeyBinding);
-        }
-
-        return null;
-    }
-
-    @Nullable
-    public static String getSecStatusText(float moveSpeedPercent) {
-        return "Speed: " + Format.nf001(moveSpeedPercent) + "%";
-    }
-
-    @NotNull
-    public static String concatKeyBinding(@NotNull String prefix, @Nullable String suffix, @Nullable String keyBinding) {
-        return prefix + (Format.isEmpty(keyBinding)? "": " [" + keyBinding + "]") + " : " + (Format.isEmpty(suffix)? "N/A": suffix);
-    }
-
-    @NotNull
-    public static String getLastMoveText(@NotNull Move lastMove, @Nullable String keyBinding) {
-        return concatKeyBinding("Last Move", lastMove.toString(), keyBinding);
-    }
-
-    @NotNull
-    public static String getCameraModeText(boolean freeCam, @Nullable String keyBinding) {
-        return concatKeyBinding("CAMERA", freeCam? "FREE (Use Mouse)": "CUBE (Use Arrows)", keyBinding);
-    }
-
-    @Nullable
-    public static String getCubeStateText(int n, boolean cubeLocked) {
-        return (cubeLocked? "LOCKED | ": "") + n + "x" + n;
-    }
+//    @Nullable
+//    public static String getStatusText(float width, float height, float frameRate, int frameCount, boolean solving, @Nullable Solver.Solution solution, @Nullable String runSolutionKeyBinding) {
+//        if (solving) {
+//            final float rate = frameRate / 5;       // 5 = (dots per sec)
+//            final float count = (frameCount % (rate * 4)) / rate;           // 4 = no of dots + 1
+//            return STATUS_SOLVING + DOT.repeat((int) count);
+//        }
+//
+//        if (solution != null) {
+//            if (solution.isEmpty())
+//                return STATUS_ALREADY_SOLVED;
+//
+//            final int maxCount = (int) (width / (getTextSize(width, height, STATUS_TEXT_SIZE) * 2)) - 10;
+//            final String seq;
+//            if (solution.moveCount() <= maxCount) {
+//                seq = solution.getSequence();
+//            } else {
+//                seq = solution.getHeadSequence(maxCount) + " + " + Math.abs(solution.moveCount() - maxCount) + " moves";
+//            }
+//
+//            return concatKeyBinding(STATUS_SOLUTION_SEQ, seq, runSolutionKeyBinding);
+//        }
+//
+//        return null;
+//    }
+//
+//    @Nullable
+//    public static String getSecStatusText(float moveSpeedPercent) {
+//        return "Speed: " + Format.nf001(moveSpeedPercent) + "%";
+//    }
+//
+//    @NotNull
+//    public static String concatKeyBinding(@NotNull String prefix, @Nullable String suffix, @Nullable String keyBinding) {
+//        return prefix + (Format.isEmpty(keyBinding)? "": " [" + keyBinding + "]") + " : " + (Format.isEmpty(suffix)? "N/A": suffix);
+//    }
+//
+//    @NotNull
+//    public static String getLastMoveText(@NotNull Move lastMove, @Nullable String keyBinding) {
+//        return concatKeyBinding("Last Move", lastMove.toString(), keyBinding);
+//    }
+//
+//    @NotNull
+//    public static String getCameraModeText(boolean freeCam, @Nullable String keyBinding) {
+//        return concatKeyBinding("CAMERA", freeCam? "FREE (Use Mouse)": "CUBE (Use Arrows)", keyBinding);
+//    }
+//
+//    @Nullable
+//    public static String getCubeStateText(int n, boolean cubeLocked) {
+//        return (cubeLocked? "LOCKED | ": "") + n + "x" + n;
+//    }
 }
