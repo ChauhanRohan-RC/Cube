@@ -18,6 +18,7 @@ import model.cubie.Move;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import org.tritonus.share.ArraySet;
 import processing.core.PApplet;
 import processing.core.PFont;
 import processing.core.PImage;
@@ -73,7 +74,7 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
 
     public static float cubeScale(float width, float height, int n) {
         float size = Math.min(width, height);
-        return size / (n * CubeI.CUBIE_SIDE_LEN * 2.5f);     // todo factor
+        return size / (n * CubeI.CUBIE_SIDE_LEN * 2.5f);
     }
 
     public static boolean shouldRollOverRotatingCube(@NotNull KeyEvent event) {
@@ -127,6 +128,8 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
     private volatile Canceller mSolveCanceller;
     @Nullable
     private volatile Solver.Solution mCurSolution;
+    @Nullable
+    private volatile Exception mCurSolveException;
     private volatile boolean mLockCubeWhileSolving = GLConfig.DEFAULT_LOCK_CUBE_WHILE_SOLVING;
 
     /* Camera */
@@ -230,7 +233,7 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
     }
 
     public boolean shouldDrawAxesInHUD() {
-        return mCurSolution == null && !isSolving();        // Interferes with solution status
+        return mCurSolution == null && mCurSolveException == null && !isSolving();        // Interferes with solution status
     }
 
     public boolean supportsSurfaceLocationSetter() {
@@ -324,7 +327,7 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
         // Fullscreen does not expand to entire screen with P2D and P3D renderers. THis hack solves the problem
         if (isFullscreen()) {       // (P2D.equals(sketchRenderer()) || P3D.equals(sketchRenderer()))
             // A Hack to force window to fullscreen with P2D and P3D. only works after a certain delay, so post an event
-            tasks.add(() -> setFullscreenExpanded(isInitialFullscreenExpanded(), false));
+            tasks.add(() -> setFullscreenExpanded(isInitialFullscreenExpanded(), false, false));
         }
 
         if (GLConfig.DEFAULT_WINDOW_IN_SCREEN_CENTER) {
@@ -537,8 +540,9 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
         // Solver
         final boolean solving = isSolving();
         final Solver.Solution solution = mCurSolution;
+        final Exception solveExc = mCurSolveException;
 
-        if (solving || solution != null) {
+        if (solving || solution != null || solveExc != null) {
             final int n = getN();
 
             fill(GLConfig.BG_OVERLAY.getRGB());
@@ -557,110 +561,26 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
                     final String text_main = "SOLVING  " + n + "x" + n;
                     final String text_sub = "Press [" + Control.ESCAPE.keyBindingLabel + "] to cancel";
 
-                    drawSolverPage(text_main, text_sub);
+                    drawSolverPage(text_main, text_sub, null, null);
                 } else if (pauseDelta > 0) {
                     mSolverDrawTrigger = mills + 400 /* ms to hide */;
                 }
-            } else if (solution.isEmpty()) {
-                final String text_main = "ALREADY  SOLVED";
-                final String text_sub = "Press any key to continue";
+            } else if (solution != null) {
+                if (solution.isEmpty()) {
+                    final String text_main = "ALREADY  SOLVED";
+                    final String text_sub = "Press any key to continue";
 
-                drawSolverPage(text_main, text_sub);
+                    drawSolverPage(text_main, text_sub, null, null);
+                } else {
+                    // A healthy solution
+                    drawSolverSolutionPage(solution, padx, pady);
+                }
             } else {
-                // A healthy solution
-                final String title = n + "x" + n + "  SOLVED";
+                // Solver error
+                final String text_main = "SOLVER  FAILED";
+                final String text_sub = "Error: " + getSolverExceptionMessage(solveExc) + "\nPress any key to continue";
 
-                textSize(getTextSize(GLConfig.TEXT_SIZE_HUGE1));
-                final float titleH = textAscent() + textDescent();
-                final float titleW = textWidth(title);
-                float y = pady * 3;
-
-                // Title
-                fill(GLConfig.ACCENT_HIGHLIGHT.getRGB());
-                textAlign(CENTER, TOP);
-                text(title, width / 2f, y);
-
-                // Title Lines
-                stroke(GLConfig.ACCENT_HIGHLIGHT.getRGB());
-                strokeWeight(2);
-                final float line_padx = padx * 2, line_y = y + (titleH / 2);
-                line(line_padx, line_y, (width / 2f) - (titleW / 2f) - line_padx, line_y);
-                line((width / 2f) + (titleW / 2f) + line_padx, line_y, width - line_padx, line_y);
-
-                y += (titleH + (pady * 3));
-
-                // Entries ..........................................................
-                final String delimiter = "    ";
-                final String time_taken_label = "Time Taken";
-                final String seq_label = "Moves (" + solution.moveCount() + ")";
-
-                final float ts_label = getTextSize(GLConfig.TEXT_SIZE_SMALL1);
-                final float ts_value = getTextSize(GLConfig.TEXT_SIZE_NORMAL);
-                textSize(ts_label);
-
-                final float max_label_w = max(textWidth(time_taken_label), textWidth(seq_label));
-                final float label_h = textAscent() + textDescent();
-                final float vgap = pady;
-
-                // Labels
-                fill(GLConfig.ACCENT_HIGHLIGHT.getRGB());
-                textAlign(LEFT, TOP);
-                text(time_taken_label, line_padx, y);
-                text(seq_label, line_padx, y + label_h + vgap);
-
-                // Values
-                textSize(ts_value);
-                final String time_taken_val = solution.getMsTaken() + "  ms";
-
-                final float max_seq_w = width - (line_padx * 2) - max_label_w - textWidth(delimiter.repeat(2));
-                final String seq_val = ellipMoveSequence(solution.movesUnmodifiable.listIterator(), solution.moveCount(), max_seq_w);
-
-                fill(GLConfig.FG_DARK.getRGB());
-                textAlign(LEFT, BOTTOM);
-                y += label_h;
-                text(delimiter + time_taken_val, line_padx + max_label_w, y);
-                y += vgap + label_h;
-                text(delimiter + seq_val, line_padx + max_label_w, y);
-
-                // Info...........................
-                final String[] info_labels = {
-                        Control.SOLVE_OR_APPLY.keyBindingLabel,
-                        Control.ESCAPE.keyBindingLabel,
-                        "Ctrl-C"
-                };
-
-                final String[] info_vals = {
-                        "Apply solution",
-                        "Cancel solution",
-                        "Copy to clipboard"
-                };
-
-                final float ts_info_label = getTextSize(GLConfig.TEXT_SIZE_SMALL1);
-                final float ts_info_val = getTextSize(GLConfig.TEXT_SIZE_NORMAL);
-                textSize(max(ts_info_label, ts_info_val));
-                final float info_e_height = textAscent() + textDescent();
-
-                textSize(ts_info_label);
-                float max_info_label_w = 0;
-                for (String l: info_labels) {
-                    max_info_label_w = max(max_info_label_w, textWidth(l));
-                }
-
-                final float info_y = height - pady;
-                final float info_vgap = pady / 2;
-
-                textAlign(LEFT, BOTTOM);
-                fill(GLConfig.FG_MAIN_CONTROLS_KEY_LABEL.getRGB());
-                for (int i=0; i < info_labels.length; i++) {
-                    text(info_labels[info_labels.length - i - 1], line_padx, info_y - (i * (info_e_height + info_vgap)));
-                }
-
-                textSize(ts_info_val);
-                textAlign(LEFT, BOTTOM);
-                fill(GLConfig.FG_DARK.getRGB());
-                for (int i=0; i < info_vals.length; i++) {
-                    text(delimiter + info_vals[info_vals.length - i - 1], line_padx + max_info_label_w, info_y - (i * (info_e_height + info_vgap)));
-                }
+                drawSolverPage(text_main, text_sub, GLConfig.COLOR_ERROR, null);
             }
         } else {
             mSolverDrawTrigger = 0;
@@ -668,12 +588,14 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
     }
 
 
-    private void drawSolverPage(@NotNull String text_main, @Nullable String text_sub) {
+    private void drawSolverPage(@NotNull String text_main, @Nullable String text_sub, @Nullable Color color_main, @Nullable Color color_sub) {
         textSize(getTextSize(GLConfig.TEXT_SIZE_HUGE3));
         final float height_main = textAscent() + textDescent();
 
         // Main
-        fill(GLConfig.ACCENT_HIGHLIGHT.getRGB());
+        if (color_main == null)
+            color_main = GLConfig.COLOR_ACCENT_HIGHLIGHT;
+        fill(color_main.getRGB());
         textAlign(CENTER, CENTER);
         text(text_main, width / 2f, height / 2f);
 
@@ -682,7 +604,9 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
 
         // Sub
         textSize(getTextSize(GLConfig.TEXT_SIZE_LARGE1));
-        fill(GLConfig.FG_DARK.getRGB());
+        if (color_sub == null)
+            color_sub = GLConfig.FG_DARK;
+        fill(color_sub.getRGB());
         textAlign(CENTER, TOP);
         text(text_sub, width / 2f, (height / 2f) + height_main);
     }
@@ -713,6 +637,103 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
         }
 
         return seq.toString();
+    }
+
+    private void drawSolverSolutionPage(@NotNull Solver.Solution solution, float padx, float pady) {
+        // A healthy solution
+        final String title = solution.n + "x" + solution.n + "  SOLVED";
+
+        textSize(getTextSize(GLConfig.TEXT_SIZE_HUGE1));
+        final float titleH = textAscent() + textDescent();
+        final float titleW = textWidth(title);
+        float y = pady * 3;
+
+        // Title
+        fill(GLConfig.COLOR_ACCENT_HIGHLIGHT.getRGB());
+        textAlign(CENTER, TOP);
+        text(title, width / 2f, y);
+
+        // Title Lines
+        stroke(GLConfig.COLOR_ACCENT_HIGHLIGHT.getRGB());
+        strokeWeight(2);
+        final float line_padx = padx * 2, line_y = y + (titleH / 2);
+        line(line_padx, line_y, (width / 2f) - (titleW / 2f) - line_padx, line_y);
+        line((width / 2f) + (titleW / 2f) + line_padx, line_y, width - line_padx, line_y);
+
+        y += (titleH + (pady * 3));
+
+        // Entries ..........................................................
+        final String delimiter = "    ";
+        final String time_taken_label = "Time Taken";
+        final String seq_label = "Moves (" + solution.moveCount() + ")";
+
+        final float ts_label = getTextSize(GLConfig.TEXT_SIZE_SMALL1);
+        final float ts_value = getTextSize(GLConfig.TEXT_SIZE_NORMAL);
+        textSize(ts_label);
+
+        final float max_label_w = max(textWidth(time_taken_label), textWidth(seq_label));
+        final float label_h = textAscent() + textDescent();
+        final float vgap = pady;
+
+        // Labels
+        fill(GLConfig.COLOR_ACCENT_HIGHLIGHT.getRGB());
+        textAlign(LEFT, TOP);
+        text(time_taken_label, line_padx, y);
+        text(seq_label, line_padx, y + label_h + vgap);
+
+        // Values
+        textSize(ts_value);
+        final String time_taken_val = solution.getMsTaken() + "  ms";
+
+        final float max_seq_w = width - (line_padx * 2) - max_label_w - textWidth(delimiter.repeat(2));
+        final String seq_val = ellipMoveSequence(solution.movesUnmodifiable.listIterator(), solution.moveCount(), max_seq_w);
+
+        fill(GLConfig.FG_DARK.getRGB());
+        textAlign(LEFT, BOTTOM);
+        y += label_h;
+        text(delimiter + time_taken_val, line_padx + max_label_w, y);
+        y += vgap + label_h;
+        text(delimiter + seq_val, line_padx + max_label_w, y);
+
+        // Info...........................
+        final String[] info_labels = {
+                Control.SOLVE_OR_APPLY.keyBindingLabel,
+                Control.ESCAPE.keyBindingLabel,
+                "Ctrl-C"
+        };
+
+        final String[] info_vals = {
+                "Apply solution",
+                "Cancel solution",
+                "Copy to clipboard"
+        };
+
+        final float ts_info_label = getTextSize(GLConfig.TEXT_SIZE_SMALL1);
+        final float ts_info_val = getTextSize(GLConfig.TEXT_SIZE_NORMAL);
+        textSize(max(ts_info_label, ts_info_val));
+        final float info_e_height = textAscent() + textDescent();
+
+        textSize(ts_info_label);
+        float max_info_label_w = 0;
+        for (String l: info_labels) {
+            max_info_label_w = max(max_info_label_w, textWidth(l));
+        }
+
+        final float info_y = height - pady;
+        final float info_vgap = pady / 2;
+
+        textAlign(LEFT, BOTTOM);
+        fill(GLConfig.FG_MAIN_CONTROLS_KEY_LABEL.getRGB());
+        for (int i=0; i < info_labels.length; i++) {
+            text(info_labels[info_labels.length - i - 1], line_padx, info_y - (i * (info_e_height + info_vgap)));
+        }
+
+        textSize(ts_info_val);
+        textAlign(LEFT, BOTTOM);
+        fill(GLConfig.FG_DARK.getRGB());
+        for (int i=0; i < info_vals.length; i++) {
+            text(delimiter + info_vals[info_vals.length - i - 1], line_padx + max_info_label_w, info_y - (i * (info_e_height + info_vgap)));
+        }
     }
 
 
@@ -1106,9 +1127,14 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
      * Expand: Fill the entire screen native resolution<br>
      * Window: Set the surface size to initial windowed size, as given by {@link #getInitialWindowedSize()} and center on screen
      * */
-    public final void setFullscreenExpanded(boolean expanded, boolean verbose) {
-        if (!isFullscreen() || (isFullscreenExpanded() == expanded))
+    public final void setFullscreenExpanded(boolean expanded, boolean verbose, boolean force) {
+        if (!isFullscreen() || (!force && isFullscreenExpanded() == expanded)) {
+            if (verbose && !isFullscreen()) {
+                U.printerrln(R.SHELL_WINDOW + "Window is currently NOT in fullscreen mode. Relaunch in fullscreen mode to expand/collapse.");
+            }
+
             return;
+        }
 
         if (expanded) {
             setSurfaceToNativeFullscreenSize();
@@ -1117,16 +1143,13 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
         }
     }
 
-    public final void toggleFullscreenExpanded(boolean verbose) {
-        if (!isFullscreen())
-            return;
-
-        setFullscreenExpanded(!isFullscreenExpanded(), verbose);
+    public final void toggleFullscreenExpanded(boolean verbose, boolean force) {
+        setFullscreenExpanded(!isFullscreenExpanded(), verbose, force);
     }
 
-    public final void resetSurfaceSizeAndPos(boolean verbose) {
+    public final void resetSurfaceSizeAndPos(boolean verbose, boolean force) {
         if (isFullscreen()) {
-            setFullscreenExpanded(isInitialFullscreenExpanded(), verbose);
+            setFullscreenExpanded(isInitialFullscreenExpanded(), verbose, force);
         } else {
             setSurfaceToInitialWindowedSize(true, verbose);
         }
@@ -1177,7 +1200,19 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
 
 
     @Nullable
-    public Solver.Solution getCurrentSolution() {
+    public final Exception getCurSolveException() {
+        return mCurSolveException;
+    }
+
+    @Nullable
+    public final Exception invalidateSolveException() {
+        final Exception cur_exc = mCurSolveException;
+        mCurSolveException = null;
+        return cur_exc;
+    }
+
+    @Nullable
+    public final Solver.Solution getCurrentSolution() {
         return mCurSolution;
     }
 
@@ -1185,11 +1220,16 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
      * @return Solution which is invalidated, or {@code null} if there was no solution
      * */
     @Nullable
-    public final Solver.Solution invalidateSolution() {
+    public final Solver.Solution invalidateSolution(boolean invalidateSolveException) {
         final Solver.Solution cur_sol = mCurSolution;
         mCurSolution = null;
+        if (invalidateSolveException) {
+            invalidateSolveException();
+        }
+
         return cur_sol;
     }
+
 
     /**
      * @return true if cancelled an ongoing solve, false if not currently solving
@@ -1210,9 +1250,15 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
         return cancelled;
     }
 
-    public final void solve() {
-        if (isSolving())
+    public final void solve(final boolean verbose) {
+        if (isSolving()) {
+            if (verbose) {
+                U.printerrln(R.SHELL_SOLVER + "Solution sequence is in progress...");
+            }
+
             return;
+        }
+
 
 //        if (getN() != 3) {
 //            Util.w(R.SHELL_SOLVER, "Solver only works for 3*3 cube");
@@ -1220,14 +1266,21 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
 //        }
 
         // If Has a solution, apply it
-        final Solver.Solution curSolution = invalidateSolution();
+        final Solver.Solution curSolution = invalidateSolution(true);
         if (!(curSolution == null || curSolution.isEmpty()) && curSolution.n == getN()) {
+            if (verbose) {
+                U.println(R.SHELL_SOLVER + "Applying solution sequence: " + curSolution.getSequence());
+            }
+
             cubeGL.applySequence(curSolution.movesUnmodifiable);
             return;
         }
 
         // Finish all pending moves, and start solving
-        cubeGL.finishAllMoves(false);
+        final int finishedCount = cubeGL.finishAllMoves(false);
+        if (finishedCount > 0 && verbose) {
+            U.println(R.SHELL_SOLVER + String.format("%d pending move%s have been finished before solving the cube", finishedCount, finishedCount > 1? "s": ""));
+        }
 
         setSolvingFlag(true);       // turn solving-flag ON
 
@@ -1239,58 +1292,60 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
             Solver.Solution sol = null;
             Exception exc = null;
             try {
-                sol = doSolveWorker(cubeGL.getCube(), true, canceller);
+                sol = doSolveWorker(cubeGL.getCube(), true, canceller, verbose);
             } catch (Exception exc_) {
                 exc = exc_;
             }
 
-            onSolveFinishedWorker(sol, exc);
+            onSolveFinishedWorker(sol, exc, verbose);
         });
     }
 
 
     // Worker thread
     @NotNull
-    private Solver.Solution doSolveWorker(@NotNull Cube cube, boolean createCopy, @Nullable CancellationProvider c) throws Solver.SolveException, CancellationException {
+    private Solver.Solution doSolveWorker(@NotNull Cube cube, final boolean createCopy, @Nullable CancellationProvider c, final boolean verbose) throws Solver.SolveException, CancellationException {
 //        if (createCopy) {
 //            cube = new Cube(cube);      // Just copy to be safe
 //        }
 
-        final int n = cube.n();
-        U.println(R.SHELL_SOLVER + String.format("Solving %dx%dx%d state: %s", n, n, n, cube.representation2D()));
+        if (verbose) {
+            final int n = cube.n();
+            U.println(R.SHELL_SOLVER + String.format("Solving %dx%dx%d state: %s", n, n, n, cube.representation2D()));
+        }
 
         return Solver.solve(cube, createCopy, c);
     }
 
 
     // Worker thread
-    private void onSolveFinishedWorker(@Nullable Solver.Solution solution, @Nullable Exception exc) {
-        enqueueTask(() -> onSolveFinishedMain(solution, exc));      // just enqueue for now
+    private void onSolveFinishedWorker(@Nullable Solver.Solution solution, @Nullable Exception exc, final boolean verbose) {
+        enqueueTask(() -> onSolveFinishedMain(solution, exc, verbose));      // just enqueue for now
     }
 
     // UI-thread
-    private void onSolveFinishedMain(@Nullable Solver.Solution solution, @Nullable Exception exc) {
+    private void onSolveFinishedMain(@Nullable Solver.Solution solution, @Nullable Exception exc, final boolean verbose) {
         if (solution != null) {
-            onSolveSuccess(solution);
+            onSolveSuccess(solution, verbose);
         } else if (exc instanceof CancellationException cancellationException) {
-            onSolveCancelled(cancellationException);
+            onSolveCancelled(cancellationException, verbose);
         } else {
-            onSolveError(exc);
+            onSolveError(exc, verbose);
         }
 
         setSolvingFlag(false);       // turn solving-flag OFF
     }
 
+    private void onSolveCancelled(@Nullable CancellationException exc, final boolean verbose) {
+        if (verbose) {
+            U.printerrln(R.SHELL_SOLVER + "Solver Cancelled");
+        }
 
-    private void onSolveCancelled(@Nullable CancellationException exc) {
-        U.printerrln(R.SHELL_SOLVER + "Solver Cancelled");
-
-        invalidateSolution();
+        invalidateSolution(true);
     }
 
-    private void onSolveError(@Nullable Exception exc) {
-        invalidateSolution();
-
+    @NotNull
+    private static String getSolverExceptionMessage(@Nullable Exception exc) {
         final String msg;
 
         if (exc instanceof Solver.SolveException) {
@@ -1301,30 +1356,45 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
             msg = "Unknown Error";
         }
 
-        U.printerrln(R.SHELL_SOLVER + "Solver Failed: " + msg);
+        return msg;
     }
 
-    private void onSolveSuccess(@NotNull Solver.Solution solution) {
+    private void onSolveError(@Nullable Exception exc, final boolean verbose) {
+        invalidateSolution(false);
+        if (exc == null) {
+            exc = Solver.SolveException.UNKNOWN;
+        }
+
+        mCurSolveException = exc;
+        if (verbose) {
+            U.printerrln(R.SHELL_SOLVER + "Solver Failed: " + getSolverExceptionMessage(exc));
+        }
+    }
+
+    private void onSolveSuccess(@NotNull Solver.Solution solution, final boolean verbose) {
         mCurSolution = solution;
+        mCurSolveException = null;
 
-        if (solution.isEmpty()) {
-            U.println(R.SHELL_SOLVER + "Cube is already solved!");
-        } else {
-            StringBuilder sb = new StringBuilder()
-                    .append(" Cube Solved!")
-                    .append("\n............ Solution ............")
-                    .append("\n\t -> Dimensions: ").append(solution.n).append('x').append(solution.n).append('x').append(solution.n)
-                    .append("\n\t -> Moves: ").append(solution.moveCount());
+        if (verbose) {
+            if (solution.isEmpty()) {
+                U.println(R.SHELL_SOLVER + "Cube is already solved!");
+            } else {
+                StringBuilder sb = new StringBuilder()
+                        .append("Cube Solved!")
+                        .append("\n............ Solution ............")
+                        .append("\n\t -> Dimensions: ").append(solution.n).append('x').append(solution.n).append('x').append(solution.n)
+                        .append("\n\t -> Moves: ").append(solution.moveCount());
 
-            final Long msTaken = solution.getMsTaken();
-            if (msTaken != null && msTaken > 0) {
-                sb.append("\n\t -> Time Taken: ").append(msTaken).append(" ms");
+                final Long msTaken = solution.getMsTaken();
+                if (msTaken != null && msTaken > 0) {
+                    sb.append("\n\t -> Time Taken: ").append(msTaken).append(" ms");
+                }
+
+                sb.append("\n\t -> Sequence: ").append(solution.getSequence());
+                sb.append("\nPress [").append(Control.SOLVE_OR_APPLY.keyBindingLabel).append("] or type command <solve> to apply the solution...");
+                sb.append("\n...................................\n");
+                U.println(R.SHELL_SOLVER + sb.toString());
             }
-
-            sb.append("\n\t -> Sequence: ").append(solution.getSequence());
-            sb.append("\nPress [").append(Control.SOLVE_OR_APPLY.keyBindingLabel).append("] or type command <solve> to apply the solution...");
-            sb.append("\n...................................\n");
-            U.println(R.SHELL_SOLVER + sb.toString());
         }
     }
 
@@ -1372,8 +1442,9 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
 
         // Key traps
         final Solver.Solution solution = mCurSolution;
-        if (solution != null && solution.isEmpty()) {
-            invalidateSolution();       // Invalidate empty solution on any key press
+        final Exception solveExc = mCurSolveException;
+        if (solveExc != null || (solution != null && solution.isEmpty())) {
+            invalidateSolution(true);       // Invalidate empty solution or error on any key press
             return;
         }
 
@@ -1409,6 +1480,26 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
         }
     }
 
+    public boolean onEscape(@Nullable KeyEvent event, final boolean verbose) {
+        final int cancelled_count = cubeGL.cancelAllMoves();
+        final boolean sol_cancelled = cancelSolve(verbose);
+        final boolean sol_invalidated = invalidateSolution(false) != null;
+        final boolean err_invalidated = invalidateSolveException() != null;
+
+        if (!(cancelled_count > 0 || sol_cancelled || sol_invalidated || err_invalidated)) {
+            exit();
+        }
+
+        if (verbose) {
+            if (cancelled_count > 0) {
+                U.println("\n" + R.SHELL_MOVE + String.format("%d move%s have been cancelled", cancelled_count, cancelled_count > 1? "s": ""));
+            }
+        }
+
+        return true;
+    }
+
+
     @Override
     public void mouseClicked(MouseEvent event) {
         super.mouseClicked(event);
@@ -1423,7 +1514,7 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
                 return;
             }
 
-            toggleFullscreenExpanded(false);
+            toggleFullscreenExpanded(false, true);
 
 //            if (getCamera().insideViewport(event.getX(), event.getY())) {
 //                resetCamera(true, true);
@@ -1794,7 +1885,7 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
         }
     }
 
-    public void serFreeCameraEnabled(boolean freeCamera, boolean animate) {
+    public void setFreeCameraEnabled(boolean freeCamera, boolean animate) {
         if (mFreeCamera == freeCamera)
             return;
 
@@ -1802,7 +1893,7 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
     }
 
     public void toggleFreeCamera(boolean animate) {
-        serFreeCameraEnabled(!isFreeCameraEnabled(), animate);
+        setFreeCameraEnabled(!isFreeCameraEnabled(), animate);
     }
 
 
@@ -1815,16 +1906,42 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
         return animate? GLConfig.CAMERA_ROTATIONS_ANIMATION_MILLS: 0;
     }
 
+
+
+    public final void rotateCameraXTo(double angle, boolean animate) {
+        getCamera().rotateXTo(angle, rotationAnimMills(animate));
+    }
+
+    public final void rotateCameraYTo(double angle, boolean animate) {
+        getCamera().rotateYTo(angle, rotationAnimMills(animate));
+    }
+
+    public final void rotateCameraZTo(double angle, boolean animate) {
+        getCamera().rotateZTo(angle, rotationAnimMills(animate));
+    }
+
+    public final void rotateCameraXBy(double angle, boolean animate) {
+        getCamera().rotateXBy(angle, rotationAnimMills(animate));
+    }
+
+    public final void rotateCameraYBy(double angle, boolean animate) {
+        getCamera().rotateYBy(angle, rotationAnimMills(animate));
+    }
+
+    public final void rotateCameraZBy(double angle, boolean animate) {
+        getCamera().rotateZBy(angle, rotationAnimMills(animate));
+    }
+
     public final void rotateCameraXByUnit(boolean up, boolean animate) {
-        getCamera().rotateXBy((up? -1: 1) * HALF_PI, rotationAnimMills(animate));
+        rotateCameraXBy((up? -1: 1) * HALF_PI, animate);
     }
 
     public final void rotateCameraYByUnit(boolean left, boolean animate) {
-        getCamera().rotateYBy((left? 1: -1) * HALF_PI, rotationAnimMills(animate));
+        rotateCameraYBy((left? 1: -1) * HALF_PI, animate);
     }
 
     public final void rotateCameraZByUnit(boolean left, boolean animate) {
-        getCamera().rotateZBy((left? 1: -1) * HALF_PI, rotationAnimMills(animate));
+        rotateCameraZBy((left? 1: -1) * HALF_PI, animate);
     }
 
 
@@ -1874,7 +1991,7 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
     @Override
     public void onCubeChanged(@NotNull CubeGL cubeGL, @NotNull Cube old, @NotNull Cube _new) {
         cancelSolve(true);
-        invalidateSolution();
+        invalidateSolution(true);
         updateCameraInitialState();
 
         playNextMidiNote();
@@ -1915,7 +2032,7 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
     @Override
     public void onMoveApplied(@NotNull Cube cube, @NotNull Move move, int cubiesAffected, boolean saved) {
         cancelSolve(true);  // Cancel solving
-        invalidateSolution();
+        invalidateSolution(true);
     }
 
     @Override
@@ -1923,166 +2040,538 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
 
     }
 
+    private void printerrlnCubeLocked(@Nullable String prefix) {
+        U.printerrln(R.SHELL_ROOT + (Format.isEmpty(prefix)? "": prefix + ". ") + "CUBE LOCKED: " + cubeGL.getCube().isLocked());
+    }
 
-    public static void init(String[] args) {
+    public void printerrlnCameraUnsupported() {
+        U.printerrln(R.SHELL_CAMERA + "Camera is not supported by the current Renderer: " + sketchRenderer());
+    }
+
+
+    protected void main_init(String[] args) {
         //        R.createShellInstructionsReadme();
     }
 
-    public static void main(String[] args) {
-        init(args);
+    public void main_cli(String[] args) {
+        main_init(args);
 
+//        println(DESCRIPTION_FULL);  // todo: des full
+        println("-> Command Line Thread: " + Thread.currentThread().getName() + "\n");
+        boolean running = true;
+        Scanner sc;
+
+        final ArrayList<String> main_cmds = new ArrayList<>();
+        final Set<String> ops = new ArraySet<>();
+        final ArrayList<Runnable> tasks = new ArrayList<>();
+
+        while (running) {
+            sc = new Scanner(System.in);
+            print(R.SHELL_ROOT);
+
+            main_cmds.clear();
+            ops.clear();
+            tasks.clear();
+
+            final String cmd = sc.nextLine().trim().toLowerCase();
+            if (cmd.isEmpty())
+                continue;
+
+            switch (cmd) {
+                case "exit", "quit" -> running = false;
+                case "cancel", "stop" -> tasks.add(() -> onEscape(null, true));
+                case "finish" -> tasks.add(() -> {
+                    final int finishCount = cubeGL.finishAllMoves(false);
+                    if (finishCount > 0) {
+                        U.println("\n" + R.SHELL_MOVE + String.format("%d move%s have been finished", finishCount, finishCount > 1? "s": ""));
+                    }
+                });
+                case "undo", "undo-last" -> tasks.add(cubeGL::undoRunningOrLastCommittedMove);
+                case "solve" -> tasks.add(() -> this.solve(true));
+                case "anim", "toggle anim", "animations", "toggle animations" -> tasks.add(cubeGL::toggleMoveAnimationEnabled);
+                case "axes", "toggle axes" -> tasks.add(this::toggleDrawCubeAxes);
+                case "sound", "toggle sound" -> tasks.add(this::toggleSoundEnabled);
+                case "poly-rhythm", "toggle poly-rhythm" -> tasks.add(this::togglePolyRhythmEnabled);
+                case "hud", "toggle hud" -> tasks.add(this::toggleHudEnabled);
+                case "controls", "toggle controls", "keys", "toggle keys" -> tasks.add(this::toggleShowKeyBindings);
+                case "cam", "camera", "toggle camera" -> tasks.add(() -> toggleFreeCamera(true));
+                case "cam free", "camera free" -> tasks.add(() -> setFreeCameraEnabled(true, true));
+                case "cam loc", "cam locked", "camera loc", "camera locked" -> tasks.add(() -> setFreeCameraEnabled(false, true));
+                case "expand", "toggle expand" ->  tasks.add(() -> toggleFullscreenExpanded(true, true));
+                case "save", "save frame", "saveframe", "snap", "snapshot" -> tasks.add(this::snapshot);
+                default -> {
+                    final String[] tokens = splitTokens(cmd);
+                    for (String s: tokens) {
+                        if (s.isEmpty())
+                            continue;
+
+                        if (s.length() > 1 && s.charAt(0) == '-' && !Character.isDigit(s.charAt(1))) {
+                            ops.add(s);
+                        } else {
+                            main_cmds.add(s);
+                        }
+                    }
+                    if (main_cmds.isEmpty()) {
+                        continue;
+                    }
+
+                    final String main_cmd = main_cmds.get(0);       // main command
+                    final boolean forceFlag = ops.contains("-f");
+                    final boolean resetFlag = ops.contains("-reset");
+
+                    switch (main_cmd) {
+                        case "help", "usage" -> {
+                            boolean done = false;
+
+                            if (ops.contains("-control") || ops.contains("-controls") || ops.contains("-key") || ops.contains("-keys") || ops.contains("-keybindings") || ops.contains("-key-bindings")) {
+//                                println(DESCRIPTION_CONTROLS); // todo: des controls
+                                done = true;
+                            }
+
+                            if (ops.contains("-cmd") || ops.contains("-command") || ops.contains("-commands")) {
+//                                println(DESCRIPTION_COMMANDS);  // todo: des commands
+                                done = true;
+                            }
+
+                            if (!done) {        // print everything
+//                                println(DESCRIPTION_FULL);      // todo: des full
+                            }
+                        }
+
+                        case "win", "window" -> {
+                            final Runnable usage_pr = () -> println(R.SHELL_WINDOW + "Sets the window size or screen location.\nUsage: win [-size | -pos] <x> <y>\nWildcards: w -> initial windowed size (to be used with -size)  |  c -> center window on screen (to be used with -pos)\nExample: win -size 200 400  |  win -pos 10 20  |  win -pos center  |  win -size w\n");
+                            final int mode;
+
+                            // Mode: 0 -> Size, 1 -> Position
+                            if (ops.contains("-size")) {
+                                mode = 0;
+                            } else if (ops.contains("-pos") || ops.contains("-position") || ops.contains("-loc") || ops.contains("-location")) {
+                                mode = 1;
+                            } else {
+                                usage_pr.run();
+                                continue;
+                            }
+
+                            // Wildcards
+                            final String wildcard = main_cmds.size() == 2? main_cmds.get(1): null;
+                            boolean wildcardDone = false;
+
+                            if (Format.notEmpty(wildcard)) {
+                                if (mode == 0 && (wildcard.equals("w") || wildcard.equals("win") || wildcard.equals("window") || wildcard.equals("windowed"))) {
+                                    tasks.add(() -> setSurfaceToInitialWindowedSize(false, true));
+                                    wildcardDone = true;
+                                } else if (mode == 1 && (wildcard.equals("c") || wildcard.equals("center"))) {
+                                    tasks.add(() -> setSurfaceLocationCenter(true));
+                                    wildcardDone = true;
+                                }
+                            }
+
+                            // Main commands
+                            if (!wildcardDone) {
+                                if (main_cmds.size() < 3) {
+                                    usage_pr.run();
+                                    continue;
+                                }
+
+                                final String v1_str = main_cmds.get(1);
+                                final String v2_str = main_cmds.get(2);
+
+                                try {
+                                    final int v1 = Integer.parseInt(v1_str);
+                                    final int v2 = Integer.parseInt(v2_str);
+
+                                    if (mode == 0) {
+                                        tasks.add(() -> setSurfaceSize(v1, v2, true));
+                                    } else {
+                                        tasks.add(() -> setSurfaceLocation(v1, v2, true));
+                                    }
+                                } catch (NumberFormatException n_exc) {
+                                    U.printerrln(R.SHELL_WINDOW + String.format("Invalid arguments supplied to window %s. %s must only be integers. GIven: %s, %s", mode == 0? "size": "position", mode == 0? "Width and Height": "Screen X and Y coordinates", v1_str, v2_str));
+                                    usage_pr.run();
+                                } catch (Exception exc) {
+                                    U.printerrln(R.SHELL_WINDOW + "Failed to set window " + (mode == 0? "size": "position") + ".\nException: " + exc);
+                                    usage_pr.run();
+                                }
+                            }
+                        }
+
+                        case "n", "size", "cube", "cube-size" -> {
+                            final Runnable usage_pr = () -> println(R.SHELL_CUBE_SIZE + "Sets the cube size, in range [2, " + CubeI.DEFAULT_MAX_N + "].\nUsage: n [-f] <cube size>\nExample: n 12\n");
+
+                            final String count_str = main_cmds.size() > 1 ? main_cmds.get(1) : "";
+                            if (count_str.isEmpty()) {
+                                println(R.SHELL_CUBE_SIZE + String.format("Current cube size: %dx%d  |  Locked: %b", getN(), getN(), cubeGL.getCube().isLocked()));
+                                usage_pr.run();
+                                continue;
+                            }
+
+                            try {
+                                final int size = Integer.parseInt(count_str);
+                                if (size < 2 || size > CubeI.DEFAULT_MAX_N) {
+                                    throw new IllegalArgumentException("Cube size must be in range [2, " + CubeI.DEFAULT_MAX_N + "], given: " + size);
+                                }
+                                
+                                tasks.add(() -> {
+                                    final boolean done = cubeGL.setN(size, forceFlag);
+                                    if (done) {
+                                        U.println(R.SHELL_CUBE_SIZE + String.format("Cube Size set to %dx%d. Forced: %b", size, size, forceFlag));
+                                    } else {
+                                        printerrlnCubeLocked(String.format("Failed to set cube size to %dx%d", size, size));
+                                    }
+                                });
+                            } catch (NumberFormatException ignored) {
+                                U.printerrln(R.SHELL_CUBE_SIZE + "Cube size must be an integer. Given: " + count_str);
+                                usage_pr.run();
+                            } catch (IllegalArgumentException arg_exc) {
+                                U.printerrln(R.SHELL_CUBE_SIZE + arg_exc.getMessage());
+                                usage_pr.run();
+                            }
+                        }
+
+                        case "reset" -> {
+                            final Runnable usage_pr = () -> println(R.SHELL_RESET + "Usage: reset [-f] [-state | -env | -cam | -win | -all]\nExample: reset -env -state  |  Default: reset -f -state -cam\n");
+
+                            boolean done = false;
+
+                            if (ops.contains("-all")) {
+                                tasks.add(() -> {
+                                    cubeGL.resetCube(forceFlag);
+                                    resetSimulation();
+                                    resetCamera(!forceFlag);
+                                    resetSurfaceSizeAndPos(false, true);
+                                });
+
+                                done = true;
+                            } else {
+                                if (ops.contains("-env")) {
+                                    tasks.add(this::resetSimulation);
+                                    done = true;
+                                }
+
+                                if (ops.contains("-cam") || ops.contains("-camera")) {
+                                    tasks.add(() -> resetCamera(!forceFlag));
+                                    done = true;
+                                }
+
+                                if (ops.contains("-win") || ops.contains("-window")) {
+                                    tasks.add(() -> resetSurfaceSizeAndPos(true, true));
+                                    done = true;
+                                }
+
+                                if (ops.contains("-state")) {
+                                    tasks.add(() -> cubeGL.resetCube(forceFlag));
+                                    done = true;
+                                }
+                            }
+
+                            if (!done) {        // Default
+                                tasks.add(() -> cubeGL.resetCube(forceFlag));
+                                usage_pr.run();
+                            }
+                        }
+
+                        case "scramble", "shuffle" -> {
+                            final Runnable usage_pr = () -> println(R.SHELL_SCRAMBLE + "Scrambles the cube.\nUsage: scramble [num_moves]. Defaults to " + CubeI.DEFAULT_SCRAMBLE_MOVES + " moves\nExample: scramble 24\n");
+
+                            int count = CubeI.DEFAULT_SCRAMBLE_MOVES;
+                            final String count_str = main_cmds.size() > 1 ? main_cmds.get(1) : "";
+                            boolean set = false;
+
+                            if (count_str.isEmpty()) {
+                                usage_pr.run();
+                                set = true;
+                            } else {
+                                try {
+                                    count = Integer.parseInt(count_str);
+                                    if (count <= 0) {
+                                        throw new IllegalArgumentException("Number of scramble moves must be > 0, given: " + count);
+                                    }
+
+                                    set = true;
+                                } catch (NumberFormatException ignored) {
+                                    U.printerrln(R.SHELL_SCRAMBLE + "Number of scramble moves must be an integer. Given: " + count_str);
+                                    usage_pr.run();
+                                } catch (IllegalArgumentException arg_exc) {
+                                    U.printerrln(R.SHELL_SCRAMBLE + arg_exc.getMessage());
+                                    usage_pr.run();
+                                }
+                            }
+
+                            if (set) {
+                                final int finalCount = count;
+                                tasks.add(() -> {
+                                    final boolean done = cubeGL.scramble(finalCount);
+                                    if (done) {
+                                        U.println("\n" + R.SHELL_SCRAMBLE + String.format("Scrambling %dx%d cube with %d move%s...", getN(), getN(), finalCount, finalCount > 1? "s": ""));
+                                    } else {
+                                        printerrlnCubeLocked("Failed to scramble the cube");
+                                    }
+                                });
+                            }
+                        }
+
+                        case "speed", "animspeed", "anim-speed" -> {
+                            final Runnable cur_val_pr = () -> println(R.SHELL_ANIM_SPEED + String.format("Current: %s%% (%d ms)  |  Default: %s%% (%d ms)", Format.nf001(cubeGL.getMoveQuarterSpeedPercent()), cubeGL.getMoveQuarterDurationMs(), Format.nf001(GLConfig.moveQuarterDurationMsToPercent(GLConfig.MOVE_QUARTER_DURATION_MS_DEFAULT)), GLConfig.MOVE_QUARTER_DURATION_MS_DEFAULT));
+                            final Runnable usage_pr = () -> println(R.SHELL_ANIM_SPEED + String.format("Usage: speed [-d | -p] <value>. Modes: -d -> Duration (ms, in range [%d, %d]) | -p -> Percentage. Defaults to percentage (-p) values\nExample: speed 91 | speed -d 300\n", GLConfig.MOVE_QUARTER_DURATION_MS_MIN, GLConfig.MOVE_QUARTER_DURATION_MS_MAX));
+
+                            final String val_str = main_cmds.size() > 1 ? main_cmds.get(1) : "";
+                            if (val_str.isEmpty()) {
+                                cur_val_pr.run();
+                                usage_pr.run();
+                                continue;
+                            }
+
+                            boolean done = false;
+                            try {
+                                final float val = Float.parseFloat(val_str);
+
+                                if (ops.contains("-d") || ops.contains("-dur") || ops.contains("-duration")) {
+                                    final int int_val = floor(val);
+
+                                    if (int_val < GLConfig.MOVE_QUARTER_DURATION_MS_MIN || int_val > GLConfig.MOVE_QUARTER_DURATION_MS_MAX) {
+                                        throw new IllegalArgumentException(String.format("Move animation duration must be in range [%d, %d] ms. Given: %d ms", GLConfig.MOVE_QUARTER_DURATION_MS_MIN, GLConfig.MOVE_QUARTER_DURATION_MS_MAX, int_val));
+                                    }
+
+                                    tasks.add(() -> cubeGL.setMoveQuarterDurationMs(int_val));
+                                    done = true;
+                                } else {
+                                    if (val < 0 || val > 100) {
+                                        throw new IllegalArgumentException(String.format("Move animation speed percentage must be in range [0, 100] %%. Given: %s%%", Format.nf001(val)));
+                                    }
+
+                                    tasks.add(() -> cubeGL.setMoveQuarterSpeedPercent(val));
+                                    done = true;
+                                }
+                            } catch (NumberFormatException ignored) {
+                                U.printerrln(R.SHELL_ANIM_SPEED + "Move animation Speed (or duration) must be an integer or a floating point number, given: " + val_str);
+                                usage_pr.run();
+                            } catch (IllegalArgumentException iae) {
+                                U.printerrln(R.SHELL_ANIM_SPEED + iae.getMessage());
+                                usage_pr.run();
+                            }
+
+                            if (done) {
+                                tasks.add(() -> println("\n" + R.SHELL_ANIM_SPEED + "Move animation speed set to " + Control.ANIMATION_SPEED.getFormattedValue(this)));
+                            }
+                        }
+
+                        case "scale" -> {
+                            final Runnable cur_val_pr = () -> println(R.SHELL_SCALE + String.format("Current: %sx (%s%%)  |  Default: %sx (%s%%)", Format.nf001(getCubeDrawScale()), Format.nf001(getCubeDrawScalePercentage()), Format.nf001(GLConfig.CUBE_DRAW_SCALE_DEFAULT), Format.nf001(GLConfig.cubeDrawScaleToPercent(GLConfig.CUBE_DRAW_SCALE_DEFAULT))));
+                            final Runnable usage_pr = () -> println(R.SHELL_SCALE + String.format("Usage: scale [-x | -p] <value>. Modes:-p -> Percentage | -x -> Multiple (in range [%s, %s]). Defaults to multiple (-x) values\nExample: scale -x 2.5 | scale -p 50\n", Format.nf001(GLConfig.CUBE_DRAW_SCALE_MIN), Format.nf001(GLConfig.CUBE_DRAW_SCALE_MAX)));
+
+                            final String val_str = main_cmds.size() > 1 ? main_cmds.get(1) : "";
+                            if (val_str.isEmpty()) {
+                                cur_val_pr.run();
+                                usage_pr.run();
+                                continue;
+                            }
+
+                            boolean done = false;
+                            try {
+                                final float val = Float.parseFloat(val_str);
+
+                                if (ops.contains("-p") || ops.contains("-percent")) {
+                                    if (val < 0 || val > 100) {
+                                        throw new IllegalArgumentException("Cube draw scale percentage must be in range [0, 100] %. Given: " + val);
+                                    }
+
+                                    tasks.add(() -> setCubeDrawScalePercent(val));
+                                    done = true;
+                                } else {
+                                    if (val < GLConfig.CUBE_DRAW_SCALE_MIN || val > GLConfig.CUBE_DRAW_SCALE_MAX) {
+                                        throw new IllegalArgumentException(String.format("Cube draw scale must be in range [%s, %s] x. Given: %s", Format.nf001(GLConfig.CUBE_DRAW_SCALE_MIN), Format.nf001(GLConfig.CUBE_DRAW_SCALE_MAX), Format.nf001(val)));
+                                    }
+
+                                    tasks.add(() -> setCubeDrawScale(val));
+                                    done = true;
+                                }
+                            } catch (NumberFormatException ignored) {
+                                U.printerrln(R.SHELL_SCALE + "Cube draw scale must be an integer or a floating point number, given: " + val_str);
+                                usage_pr.run();
+                            } catch (IllegalArgumentException iae) {
+                                U.printerrln(R.SHELL_SCALE + iae.getMessage());
+                                usage_pr.run();
+                            }
+
+                            if (done) {
+                                tasks.add(() -> println("\n" + R.SHELL_SCALE + "Cube draw scale set to " + Control.CUBE_DRAW_SCALE.getFormattedValue(this)));
+                            }
+                        }
+
+                        case "intp", "interp", "interpolator" -> {
+                            final Runnable cur_val_pr = () -> U.println(R.SHELL_MOVE + String.format("Current Interpolator: %s | Default: %s", getCurrentMoveGlInterpolatorInfo(InterpolatorInfo.DEFAULT).displayName, InterpolatorInfo.fromInterpolator(GLConfig.DEFAULT_MOVE_ANIMATION_INTERPOLATOR, InterpolatorInfo.DEFAULT).displayName));
+                            final Runnable usage_pr = () -> U.println(R.SHELL_MOVE + "Sets the move animation interpolator.\nUsage: interpolator <next | key>.  Wildcard: next -> cycle to next interpolator\nAvailable Interpolators (key -> name)\n" + InterpolatorInfo.getDisplayInfo(false));
+
+                            final String val_str = main_cmds.size() > 1 ? main_cmds.get(1) : "";
+                            if (val_str.isEmpty()) {
+                                cur_val_pr.run();
+                                usage_pr.run();
+                                continue;
+                            }
+
+                            boolean done = false;
+
+                            if (val_str.equals("next") || val_str.equals("up") || val_str.equals("+")) {
+                                tasks.add(this::setNextMoveGlInterpolator);
+                                done = true;
+                            } else {
+                                final InterpolatorInfo info = InterpolatorInfo.fromKey(val_str);
+                                if (info == null) {
+                                    U.printerrln(R.SHELL_MOVE + "Invalid interpolator key <" + val_str + ">");
+                                    usage_pr.run();
+                                } else {
+                                    tasks.add(() -> setMoveGlInterpolator(info.interpolator));
+                                    done = true;
+                                }
+                            }
+
+                            if (done) {
+                                tasks.add(() -> U.println("\n" + R.SHELL_MOVE + "Move animation interpolator set to: " + Control.ANIMATION_INTERPOLATOR.getFormattedValue(this)));
+                            }
+                        }
+
+                        case "rotationx", "rotx", "rx", "pitch" -> {
+                            if (!isCameraSupported()) {
+                                printerrlnCameraUnsupported();
+                                continue;
+                            }
+
+                            final Runnable cur_val_pr = () -> println(R.SHELL_ROTATION_X + String.format("Pitch (rotation about X-axis). Current: %s", Control.CAMERA_ROTATE_X.getFormattedValue(this)));
+                            final Runnable usage_pr = () -> println(R.SHELL_ROTATION_X + "Usage: pitch [-by | -f] <+ | - | value_in_deg>. Options: -by -> change rotation by  |  -f -> Force without animations\nExample: pitch 90  |  rx -by 10.5  |  pitch +\n");
+
+                            final String val_str = main_cmds.size() > 1 ? main_cmds.get(1) : "";
+                            if (val_str.isEmpty()) {
+                                cur_val_pr.run();
+                                usage_pr.run();
+                                continue;
+                            }
+
+                            if (val_str.equals("+") || val_str.equals("up")) {
+                                tasks.add(() -> rotateCameraXByUnit(true, !forceFlag));
+                            } else if (val_str.equals("-") || val_str.equals("down")) {
+                                tasks.add(() -> rotateCameraXByUnit(false, !forceFlag));
+                            } else {
+                                try {
+                                    final float val = radians(Float.parseFloat(val_str));
+                                    if (ops.contains("-by")) {
+                                        tasks.add(() -> rotateCameraXBy(val, !forceFlag));
+                                    } else {
+                                        tasks.add(() -> rotateCameraXTo(val, !forceFlag));
+                                    }
+                                } catch (NumberFormatException exc) {
+                                    U.printerrln(R.SHELL_ROTATION_X + "Pitch (X-Rotation) must be an integer or a floating point number, given: " + val_str);
+                                    usage_pr.run();
+                                }
+                            }
+                        }
+
+                        case "rotationy", "roty", "ry", "yaw" -> {
+                            if (!isCameraSupported()) {
+                                printerrlnCameraUnsupported();
+                                continue;
+                            }
+
+                            final Runnable cur_val_pr = () -> println(R.SHELL_ROTATION_Y + String.format("Yaw (rotation about Y-axis). Current: %s", Control.CAMERA_ROTATE_Y.getFormattedValue(this)));
+                            final Runnable usage_pr = () -> println(R.SHELL_ROTATION_Y + "Usage: yaw [-by | -f] <+ | - | value_in_deg>. Options: -by -> change rotation by  |  -f -> Force without animations\nExample: yaw 90  |  ry -by 10.5  |  yaw -\n");
+
+                            final String val_str = main_cmds.size() > 1 ? main_cmds.get(1) : "";
+                            if (val_str.isEmpty()) {
+                                cur_val_pr.run();
+                                usage_pr.run();
+                                continue;
+                            }
+
+                            if (val_str.equals("+") || val_str.equals("left")) {
+                                tasks.add(() -> rotateCameraYByUnit(true, !forceFlag));
+                            } else if (val_str.equals("-") || val_str.equals("right")) {
+                                tasks.add(() -> rotateCameraYByUnit(false, !forceFlag));
+                            } else {
+                                try {
+                                    final float val = radians(Float.parseFloat(val_str));
+                                    if (ops.contains("-by")) {
+                                        tasks.add(() -> rotateCameraYBy(val, !forceFlag));
+                                    } else {
+                                        tasks.add(() -> rotateCameraYTo(val, !forceFlag));
+                                    }
+                                } catch (NumberFormatException exc) {
+                                    U.printerrln(R.SHELL_ROTATION_Y + "Yaw (Y-Rotation) must be an integer or a floating point number, given: " + val_str);
+                                    usage_pr.run();
+                                }
+                            }
+                        }
+
+                        case "rotationz", "rotz", "rz", "roll" -> {
+                            if (!isCameraSupported()) {
+                                printerrlnCameraUnsupported();
+                                continue;
+                            }
+
+                            final Runnable cur_val_pr = () -> println(R.SHELL_ROTATION_Z + String.format("Roll (rotation about Z-axis). Current: %s", Control.CAMERA_ROTATE_Z.getFormattedValue(this)));
+                            final Runnable usage_pr = () -> println(R.SHELL_ROTATION_Z + "Usage: roll [-by | -f] <+ | - | value_in_deg>. Options: -by -> change rotation by  |  -f -> Force without animations\nExample: roll 90  |  rz -by 10.5  |  roll right\n");
+
+                            final String val_str = main_cmds.size() > 1 ? main_cmds.get(1) : "";
+                            if (val_str.isEmpty()) {
+                                cur_val_pr.run();
+                                usage_pr.run();
+                                continue;
+                            }
+
+                            if (val_str.equals("+") || val_str.equals("left")) {
+                                tasks.add(() -> rotateCameraZByUnit(true, !forceFlag));
+                            } else if (val_str.equals("-") || val_str.equals("right")) {
+                                tasks.add(() -> rotateCameraZByUnit(false, !forceFlag));
+                            } else {
+                                try {
+                                    final float val = radians(Float.parseFloat(val_str));
+                                    if (ops.contains("-by")) {
+                                        tasks.add(() -> rotateCameraZBy(val, !forceFlag));
+                                    } else {
+                                        tasks.add(() -> rotateCameraZTo(val, !forceFlag));
+                                    }
+                                } catch (NumberFormatException exc) {
+                                    U.printerrln(R.SHELL_ROTATION_Z + "Roll (Z-Rotation) must be an integer or a floating point number, given: " + val_str);
+                                    usage_pr.run();
+                                }
+                            }
+                        }
+
+                        default -> {
+                            // Try to parse moves from the full command
+                            try {
+                                List<Move> moves = Move.parseSequence(cmd);
+                                if (moves != null && !moves.isEmpty()) {
+                                    tasks.add(() -> {
+                                        final boolean applied = cubeGL.applySequence(moves);
+                                        if (applied) {
+                                            U.println("\n" + R.SHELL_MOVE + "Applying move sequence: " + Move.sequence(moves));
+                                        } else {
+                                            printerrlnCubeLocked("Failed to apply the given move sequence");
+                                        }
+                                    });
+                                }
+                            } catch (Move.ParseException e) {
+                                U.printerrln(R.SHELL_MOVE + e.getMessage());
+                            } catch (Exception ignored) {
+                                U.printerrln(R.SHELL_ROOT + "Unknown Command: " + cmd);      // Unknown command
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Enqueue UI tasks of this command
+            enqueueTasks(tasks);
+        }
+
+        exit();
+
+    }
+
+    public static void main(String[] args) {
         final CubePUi3D app = new CubePUi3D();
         PApplet.runSketch(concat(new String[]{app.getClass().getName()}, args), app);
 
-//        U.println(R.SHELL_INSTRUCTIONS);
-//        Scanner sc;
-//        boolean running = true;
-//
-//        do {
-//            sc = new Scanner(System.in);
-//            print(R.SHELL_ROOT);
-//
-//            final String in = sc.nextLine();
-//            if (in.isEmpty())
-//                continue;
-//
-//            if (in.startsWith("n")) {
-//                final String rest = in.substring(1).strip();
-//                final Runnable usagePrinter = () -> U.println("Usage: n <dimension>\nDimension should be in range [2, " + CubeI.DEFAULT_MAX_N + "]");
-//
-//                if (rest.isEmpty()) {
-//                    usagePrinter.run();
-//                    continue;
-//                }
-//
-//                try {
-//                    final int n = Integer.parseInt(rest);
-//                    if (n < 2 || n > CubeI.DEFAULT_MAX_N) {
-//                        u.printerrln(R.SHELL_DIMENSION + "Cube dimension must be >= 2 and <= " + CubeI.DEFAULT_MAX_N);
-//                        usagePrinter.run();
-//                    } else {
-//                        app.enqueueTask(() -> app.cubeGL.setN(n, true /* use cli flag */));
-//                    }
-//                } catch (NumberFormatException ignored) {
-//                    u.printerrln(R.SHELL_DIMENSION + "Cube dimension must be an integer, command: n [dim]");
-//                    usagePrinter.run();
-//                }
-//            } else if (in.startsWith("scramble")) {
-//                final String rest = in.substring(8).strip();
-//                final Runnable usagePrinter = () -> U.println("Usage: scramble <num_moves>");
-//                int n = CubeI.DEFAULT_SCRAMBLE_MOVES;
-//
-//                if (rest.isEmpty()) {
-//                    U.println(R.SHELL_SCRAMBLE + "Using default scramble moves: " + n);
-//                    usagePrinter.run();
-//                } else {
-//                    try {
-//                        final int n2 = Integer.parseInt(rest);
-//                        if (n2 <= 0) {
-//                            U.w(R.SHELL_SCRAMBLE, "Scramble moves must be positive integer, falling back to default scramble moves: " + n);
-//                            usagePrinter.run();
-//                        } else {
-//                            n = n2;
-//                        }
-//                    } catch (NumberFormatException ignored) {
-//                        U.w(R.SHELL_SCRAMBLE, "Scramble moves must be positive integer, falling back to default scramble moves: " + n);
-//                        usagePrinter.run();
-//                    }
-//                }
-//
-//                app.scramble(n);
-//            } else if (in.startsWith("reset")) {
-//                if (in.length() > 5 && in.substring(5).endsWith("zoom")) {
-//                    app.resetCubeDrawScale();
-//                } else {
-//                    app.cubeGL.resetCube();
-//                }
-//            } else if (in.startsWith("finish")) {
-//                app.cubeGL.finishAllMoves(in.endsWith("c"));
-//            } else if (in.equals("solve")) {
-//                app.solve();
-//            } else if (in.equals("undo")) {
-//                app.cubeGL.undoLastMove();
-//            } else if (in.startsWith("speed")) {
-//                final String rest = in.substring(5).strip();
-//                final Runnable usagePrinter = () -> U.println("Usage: speed <option>\nAvailable options\n\t+ : Increase speed\n\t- : Decrease Speed\n\t<percent> : set speed percentage in range [0, 100]");
-//
-//                if (rest.isEmpty()) {
-//                    U.println("Current Speed: " + Format.nf001(app.getMoveSpeedPercent()));
-//                    usagePrinter.run();
-//                    continue;
-//                }
-//
-//                final float newPer;
-//
-//                if (rest.equals("+")) {
-//                    newPer = app.incMoveSpeed(false);
-//                } else if (rest.equals("-")) {
-//                    newPer = app.decMoveSpeed(false);
-//                } else {
-//                    try {
-//                        final float in_per = Float.parseFloat(rest);
-//                        if (in_per < 0 || in_per > 100) {
-//                            u.printerrln(R.SHELL_MOVE + "Move speed should be in range [0, 100], given: " + Format.nf001(in_per));
-//                            usagePrinter.run();
-//                            continue;
-//                        }
-//
-//                        newPer = app.setMoveSpeedPercent(in_per);
-//                    } catch (NumberFormatException ignored) {
-//                        u.printerrln(R.SHELL_MOVE + "Move speed should be a number in range [0, 100], given: " + rest);
-//                        usagePrinter.run();
-//                        continue;
-//                    }
-//                }
-//
-//                U.println(R.SHELL_MOVE + "Move speed set to " + Format.nf001(newPer) + "%");
-//            }
-//
-//            else if (in.startsWith("intp") || in.startsWith("interp") || in.startsWith("interpolator")) {
-//                String key = "";
-//                // checks with spaces
-//                if (in.startsWith("intp ")) {
-//                    key = in.substring(5);
-//                } else if (in.startsWith("interp ")) {
-//                    key = in.substring(7);
-//                } else if (in.startsWith("interpolator "))  {
-//                    key = in.substring(13);
-//                }
-//
-//                final Runnable usagePrinter = () -> U.println("Usage: interpolator <interpolator_key>\nAvailable Interpolators (key -> name)\n" + InterpolatorInfo.getDisplayInfo());
-//                if (key.isEmpty()) {
-//                    usagePrinter.run();
-//                    continue;
-//                }
-//
-//                final InterpolatorInfo info = InterpolatorInfo.fromKey(key);
-//                if (info == null) {
-//                    u.printerrln(R.SHELL_MOVE + "Invalid interpolator key <" + key + ">");
-//                    usagePrinter.run();
-//                    continue;
-//                }
-//
-//                final boolean changed = app.setMoveGlInterpolator(info.interpolator);
-//                final String msg = changed? "Move animation interpolator changed to: " + info.displayName: "Move animation interpolator already set to: " + info.displayName;
-//                U.w(R.SHELL_MOVE, msg);
-//            }
-//
-//            else if (in.equals("quit") || in.equals("exit")) {
-//                running = false;
-//            } else {
-//                try {
-//                    List<Move> moves = Move.parseSequence(in);
-//                    if (CollectionUtil.notEmpty(moves)) {
-//                        app.applySequence(moves);
-//                    }
-//                } catch (Move.ParseException e) {
-//                    u.printerrln(R.SHELL_MOVE + e.getMessage());
-//                }
-//            }
-//        } while (running);
-//
-//        app.exit();
+        app.main_cli(args);
     }
 
 

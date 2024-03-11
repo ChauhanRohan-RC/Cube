@@ -26,15 +26,7 @@ public enum Control {
             (ui, ev) -> {
 //                final int mod = ev.getModifiers();
                 if (ev.getKeyCode() == Control.ESCAPE_KEY_CODE_SUBSTITUTE) {
-                    final boolean moves_cancelled = ui.cubeGL.cancelAllMoves() > 0;
-                    final boolean sol_cancelled = ui.cancelSolve(true);
-                    final boolean sol_invalidated = ui.invalidateSolution() != null;
-
-                    if (!(moves_cancelled || sol_cancelled || sol_invalidated)) {
-                        ui.exit();
-                    }
-
-                    return true;
+                    return ui.onEscape(ev, true);
                 }
 
                 return false;
@@ -50,7 +42,7 @@ public enum Control {
                 final int mod = ev.getModifiers();
                 final int kc = ev.getKeyCode();
                 if (ui.isFullscreen() && kc == java.awt.event.KeyEvent.VK_W && mod == 0) {
-                    ui.toggleFullscreenExpanded(true);
+                    ui.toggleFullscreenExpanded(true, true);
                     return true;
                 }
 
@@ -205,7 +197,7 @@ public enum Control {
             }, false),
 
     ANIMATION_SPEED("Speed",
-            "Move Animation Speed, in percentage.",
+            "Move animation speed (in percent) and animation time (in ms).",
             ui -> String.format("%s%% (%d ms)",
                     Format.nf001(ui.cubeGL.getMoveQuarterSpeedPercent()),
                     ui.cubeGL.getMoveQuarterDurationMs()
@@ -327,7 +319,7 @@ public enum Control {
             (ui, ev) -> {
                 final int mod = ev.getModifiers();
                 if (ev.getKeyCode() == java.awt.event.KeyEvent.VK_ENTER && mod == 0) {
-                    ui.solve();
+                    ui.solve(true);
                     return true;
                 }
 

@@ -74,19 +74,28 @@ public class R {
 
     // Shell
 
-    private static final String SHELL_ROOT_NS = "cube:RC";       // Name Space
+    private static final String SHELL_ROOT_NS = "cube";       // Name Space
 
     @NotNull
     public static String shellPath(@Nullable String child) {
         return (Format.isEmpty(child)? SHELL_ROOT_NS: SHELL_ROOT_NS + "\\" + child) + "> ";
     }
 
+
     public static final String SHELL_ROOT = shellPath(null);
-    public static final String SHELL_DIMENSION = shellPath("dim");
+    public static final String SHELL_WINDOW = shellPath("win");
+    public static final String SHELL_CUBE_SIZE = shellPath("size");
+    public static final String SHELL_RESET = shellPath("reset");
+    public static final String SHELL_ANIM_SPEED = shellPath("speed");
     public static final String SHELL_SCRAMBLE = shellPath("scramble");
     public static final String SHELL_SOLVER = shellPath("solve");
+    public static final String SHELL_SCALE = shellPath("scale");
     public static final String SHELL_MOVE = shellPath("move");
-    public static final String SHELL_WINDOW = shellPath("win");
+
+    public static final String SHELL_CAMERA = shellPath("cam");
+    public static final String SHELL_ROTATION_X = shellPath("pitch");
+    public static final String SHELL_ROTATION_Y = shellPath("yaw");
+    public static final String SHELL_ROTATION_Z = shellPath("roll");
 
 
     public static final String DES_SHELL_COMMANDS =

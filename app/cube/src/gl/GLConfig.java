@@ -166,8 +166,9 @@ public class GLConfig {
     public static final Color FG_DARK = new Color(255, 255, 255, 255);
     public static final Color FG_MEDIUM = new Color(230, 230, 230, 255);
     public static final Color FG_LIGHT = new Color(200, 200, 200, 255);
-    public static final Color ACCENT = new Color(107, 196, 255, 255);
-    public static final Color ACCENT_HIGHLIGHT = new Color(255, 221, 83, 255);
+    public static final Color COLOR_ACCENT = new Color(107, 196, 255, 255);
+    public static final Color COLOR_ACCENT_HIGHLIGHT = new Color(255, 221, 83, 255);
+    public static final Color COLOR_ERROR = new Color(255, 40, 40, 255);
 
     public static final Color COLOR_UP = new Color(255, 219, 77, 255);
     public static final Color COLOR_RIGHT = new Color(116, 255, 77, 255);
@@ -243,11 +244,11 @@ public class GLConfig {
     public static final float TEXT_SIZE_MAIN_CONTROLS_VALUE = TEXT_SIZE_SMALL1;
     public static final Color FG_MAIN_CONTROLS_LABEL = FG_MEDIUM;
     public static final Color FG_MAIN_CONTROLS_KEY_LABEL = FG_CONTROL_KEY_BINDING_LABEL;
-    public static final Color FG_MAIN_CONTROLS_VALUE = ACCENT_HIGHLIGHT;
+    public static final Color FG_MAIN_CONTROLS_VALUE = COLOR_ACCENT_HIGHLIGHT;
 
     public static final boolean SHOW_CUR_MOVE = true;
     public static final float TEXT_SIZE_CUR_MOVE = TEXT_SIZE_HUGE1;
-    public static final Color FG_CUR_MOVE = ACCENT;
+    public static final Color FG_CUR_MOVE = COLOR_ACCENT;
 
 
 //    public static final boolean SHOW_SEC_STATUS = true;

@@ -52,6 +52,9 @@ public class Solver {
 
     public static class SolveException extends RuntimeException {
 
+        @NotNull
+        public static final SolveException UNKNOWN = new SolveException(ERR_CODE_UNKNOWN);
+
         private final int errorCode;
 
         public SolveException(int errorCode, @Nullable String message) {
@@ -443,7 +446,7 @@ public class Solver {
 
         final List<Move> internalSol = cube.getInternalSolution();
         if (internalSol == null) {
-            throw new SolveException(ERR_CODE_INTERNAL_SOLUTION_NOT_SUPPORTED, "No solver module registered for " + cube.n() + "*" + cube.n() + " cube!");
+            throw new SolveException(ERR_CODE_INTERNAL_SOLUTION_NOT_SUPPORTED, "No solver module registered for " + cube.n() + "x" + cube.n() + " cube!");
         }
 
         if (internalSol.isEmpty()) {

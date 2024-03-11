@@ -77,11 +77,11 @@ public enum InterpolatorInfo {
         return shortDisplayName != null? shortDisplayName: displayName;
     }
 
-    public static String getDisplayInfo() {
+    public static String getDisplayInfo(boolean shortNames) {
         final StringJoiner sj = new StringJoiner("\n");
 
         for (InterpolatorInfo info : values()) {
-            sj.add("\t" + info.key + " -> " + info.displayName);
+            sj.add("\t" + info.key + " -> " + (shortNames? info.getDisplayNamePreferShort(): info.displayName));
         }
 
         return sj.toString();
