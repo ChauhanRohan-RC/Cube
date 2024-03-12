@@ -2,7 +2,7 @@
 
 #### This is a 3D generic NxNxN Rubik's cube simulation and solver program. It supports any N-dimension cube, with graphical and Command-Line interface controls
 
-#### [View Demo on YouTube](https://youtu.be/F2-AvgGIDos)
+#### [View Demo on YouTube](https://www.youtube.com/playlist?list=PL_oeaRvQxDbRrbn8knIZO6Z0huWYp4iHq)
 
 ###### See also
 
@@ -10,7 +10,7 @@
 [RSA Encryptor](https://github.com/ChauhanRohan-RC/RSA-Encryptor.git)  
 [Online Multiplayer Ping-Pong AI](https://github.com/ChauhanRohan-RC/Ping-Pong-AI.git)
 
-[![Watch Demo on YouTube](gallery/thumb.png)](https://youtu.be/F2-AvgGIDos)
+[![Watch Demo on YouTube](gallery/thumb.png)](https://www.youtube.com/playlist?list=PL_oeaRvQxDbRrbn8knIZO6Z0huWYp4iHq)
 
 
 ## Usage
@@ -32,8 +32,8 @@
 
 * Uses a 2-phase generic A<sup>*</sup> algorithm with manhattan cost function, based
   on the extension of basic [Kociemba Algorithm](http://kociemba.org/math/imptwophase.htm)
-* Solves any NxNxN dimensional cube through an iterative stochastic gradient descent of heuristic cost function
-* **Can solve a 3x3 cube under 20 moves in less than 1 second**
+* Solves any NxN dimension cube through an iterative stochastic gradient descent of heuristic cost function
+* Especially optimized to solve a **_3x3 cube under 20 moves in less than 1 second_**
 * The preprocessing phase includes
     * Error checks for facelets, edges, corners, edge flips, corner twists and parity
     * Normalization of odd dimensional cubes against flipping transformations that changes center cubies orientation
