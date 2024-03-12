@@ -20,14 +20,16 @@ public class GLConfig {
 
     public static final boolean DEFAULT_LOCK_CUBE_WHILE_SOLVING = true;
 
+    /**
+     * Whether to draw internal faces of a cubie
+    * */
+    public static final boolean CUBIE_DRAW_INTERNAL_FACES = true;
+
     public static final boolean CUBE_INVERT_X = false;
     public static final boolean CUBE_INVERT_Y = true;
     public static final boolean CUBE_INVERT_Z = false;
     public static final boolean DEFAULT_CUBE_DRAW_AXES = false;
     public static final boolean DEFAULT_CUBE_DRAW_AXES_ONLY_POSITIVE = false;      // only when drawing axes
-
-    /* Sticker (weights as fractions of side length) */
-    public static final boolean CUBIE_DRAW_INTERNAL_FACES = false;
 
     public static final boolean DEFAULT_HUD_ENABLED = true;
     public static final boolean DEFAULT_SHOW_KEY_BINDINGS = true;

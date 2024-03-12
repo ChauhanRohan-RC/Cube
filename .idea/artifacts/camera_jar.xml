@@ -4,7 +4,6 @@
     <root id="archive" name="camera.jar">
       <element id="module-output" name="camera" />
       <element id="module-output" name="math" />
-      <element id="extracted-dir" path="$PROJECT_DIR$/libs/org.jetbrains.annotations.19.0.0.jar" path-in-jar="/" />
       <element id="extracted-dir" path="$PROJECT_DIR$/libs/processing/core/core-3.3.7.jar" path-in-jar="/" />
       <element id="extracted-dir" path="$PROJECT_DIR$/libs/processing/core/gluegen-rt-natives-linux-aarch64.jar" path-in-jar="/" />
       <element id="extracted-dir" path="$PROJECT_DIR$/libs/processing/core/gluegen-rt-natives-linux-amd64.jar" path-in-jar="/" />
@@ -22,6 +21,7 @@
       <element id="extracted-dir" path="$PROJECT_DIR$/libs/processing/core/jogl-all-natives-windows-amd64.jar" path-in-jar="/" />
       <element id="extracted-dir" path="$PROJECT_DIR$/libs/processing/core/jogl-all-natives-windows-i586.jar" path-in-jar="/" />
       <element id="extracted-dir" path="$PROJECT_DIR$/libs/processing/core/jogl-all.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/libs/org.jetbrains.annotations.19.0.0.jar" path-in-jar="/" />
     </root>
   </artifact>
 </component>

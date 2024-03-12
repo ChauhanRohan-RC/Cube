@@ -9,6 +9,7 @@ import java.awt.*;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.StringJoiner;
 
 public class R {
 
@@ -72,7 +73,7 @@ public class R {
     }
 
 
-    // Shell
+    /* Shell ...................................................................................*/
 
     private static final String SHELL_ROOT_NS = "cube";       // Name Space
 
@@ -98,55 +99,24 @@ public class R {
     public static final String SHELL_ROTATION_Z = shellPath("roll");
 
 
-    public static final String DES_SHELL_COMMANDS =
-            """
-            # COMMANDS .................................
-            
-             -> <move_seq> : Directly enter moves separated by space to apply
-                Example: U R' FF B2 L'[0,1]
-                
-             -> n <dimension> : Sets the cube dimension
-             -> scramble <num_moves> : Scramble with the given number of moves
-             -> undo: Undo the last move
-             -> finish [c]: finish / cancel animating and pending moves
-                Options:
-                1. c -> Cancel pending moves
-                
-             -> solve : Solve / Apply solution (Only for 3*3 cube)
-             -> reset [cube | zoom] : Reset the specified scope
-                Scopes
-                1. cube : reset cube state
-                2. zoom : reset cube zoom
-                
-             -> speed <+ | - | percent>: Set move animation speed
-                Wildcards
-                1. + -> increase animation speed
-                2. - -> decrease animation speed
-                
-             -> interpolator <key>: Set move animation interpolator
-                Keys
-                1. default -> the default interpolator
-                2. linear -> Linear interpolator
-                3. bounce -> Bounce interpolator
-                4. acc -> Accelerate interpolator
-                5. dec -> Decelerate interpolator
-                6. acd -> Accelerate-Decelerate interpolator
-                7. anticipate -> Anticipate interpolator
-                8. overshoot -> Overshoot interpolator
-                
-             -> exit / quit: quit
-            """;
+    /* Usage Description ........................................................ */
 
-    public static final String DES_SHELL_MOVES =
+    public static final String DESCRIPTION_GENERAL =
+            "=======================  "+ R.APP_TITLE +"  =======================\n" +
+            "This is a 3D NxNxN Rubik's cube simulation and solver program. It supports any N-dimensional cube, with both Graphical and Command-Line control interfaces";
+
+    public static final String DESCRIPTION_GENERAL_WITH_HELP = DESCRIPTION_GENERAL + "\n\n\tType <help> for usage information.\n";
+
+    public static final String DESCRIPTION_MOVES =
             """
-            # MOVES (Clockwise) ..............................
+             ## MOVES NOTATION ----------------------------------------------
             
-              U: Up
-              R: Right
-              F: Front
-              D: Down
-              L: Left
-              B: Back
+              U : Up
+              R : Right
+              F : Front
+              D : Down
+              L : Left
+              B : Back
 
              -> Moves are case insensitive
              -> Add prime (') for anticlockwise move.
@@ -157,77 +127,213 @@ public class R {
                  ex 1. To turn 2nd slice from right -> R1
                     2. To turn 4th slice from UP anticlockwise -> U'3
              -> To turn multiple slices in a single move, type their indices in brackets separated by comma
-                 ex Turn 1st and 3rd slices from right in a 5*5 cube -> R[0,2]
-            """;
-
-    public static final String SHELL_INSTRUCTIONS =
-            "\n.......... "+ R.APP_TITLE +" ..........\n" +
-            "This is a 3D generic NxNxN Rubik's cube simulator and solver program. It supports any N-dimensional cube, with both graphical and Command-Line controls\n\n"
-            + DES_SHELL_MOVES + "\n"
-            + DES_SHELL_COMMANDS;
+                 ex Turn 1st and 3rd slices from right in a 5*5 cube -> R[0,2]  \s""";
 
 
-    // Instructions
+    @Nullable
+    private static String sDesControls;
 
-    public static final String DES_CONTROLS_MOVES =
+    public static String getUiControlsDescription() {
+        if (sDesControls == null) {
+            sDesControls = "## UI CONTROLS ----------------------------------------------------\n\n" + Control.getControlsDescription();
+        }
+
+        return sDesControls;
+    }
+
+
+    public static final String DESCRIPTION_COMMANDS =
             """
-            U....Up
-            R....Right
-            F....Front
-            D...Down
-            L....Left
-            B...Back
+            ## COMMANDS ----------------------------------------------------
+            
+            -> help [-moves | -controls | -commands | -all] : Print usage information
+               Scopes
+               1. -moves -> print moves notation and usage
+               1. -controls -> print controls usage
+               2. -commands -> print commands usage
+               3. -all -> print entire usage information
+                       
+            -> <move_seq> : Directly enter moves separated by space to apply
+               Example: U R' FF B2 L'[0,1]
+                
+            -> size <size> : Sets the cube size
+               Alias: dim, cube
+             
+            -> solve : Solve the current state or Apply solution
+            -> scramble <num_moves> : Scramble with the given number of moves
+            
+            -> undo : Undo the last move
+            -> finish : finish animating and pending moves
+            -> cancel : cancel solver and all pending moves
+               Alias: stop
+               
+            -> reset [-f] [-state | -env | -cam | -win | -all] : Reset given scope(s)
+               Scopes
+               1. -state -> reset cube state
+               2. -env -> reset simulation environment
+               3. -cam -> reset camera (pitch, yaw and roll)
+               4. -win -> reset window size and position
+               5. -all -> reset everything  (Default)
+               Options
+               1. -f -> force reset without animations
+            
+            -> save : Save current frame to a png file
+               Alias: snap, snapshot, saveframe
+               
+            -> axes : toggle cube axes
+               Alias: toggle axes
+               
+            -> anim : toggle move animations
+               Alias: toggle anim, animations, toggle animations
+               
+            -> speed [-p | -d] <value> : Set move animation speed or duration
+               Modes
+               1. -p -> animation speed, in percentage  (Default)
+               2. -d -> animation duration, in milliseconds
+               
+            -> interpolator <next | key> : Sets the move animation interpolator
+               Alias: intp, interp
+               Wildcard: next -> cycle to next interpolator
+               Keys
+               1. default -> the default interpolator
+               2. linear -> Linear interpolator
+               3. bounce -> Bounce interpolator
+               4. acc -> Accelerate interpolator
+               5. dec -> Decelerate interpolator
+               6. acd -> Accelerate-Decelerate interpolator
+               7. anticipate -> Anticipate interpolator
+               8. overshoot -> Overshoot interpolator
+               
+            -> sound : Toggle sounds
+            -> poly-rhythm : Toggle Poly Rhythm mode. If enabled, it allows playing multiple notes at once
+                        
+            -> hud : Show / Hide HUD overlay
+            -> keys : Show / Hide control key bindings
+               Alias: toggle keys, controls, toggle controls
+               
+            -> win [-size | -pos] <x> <y> : Sets the window size or location on screen
+               Options
+               1. -size -> set window size.
+               2. -pos -> set window location on screen
+               Wildcards
+               1. w : set to initial windowed size. To be used with -size option
+               2. c : center window on screen. To be used with -pos option
+               
+            -> expand : Expand / Collapse Fullscreen window
+               Alias: toggle expand, collapse, toggle collapse
+               
+            -> cam [-free | -locked | -toggle] : set or toggle camera modes
+               Modes
+               1. -free -> free camera mode, mouse controlled
+               2. -locked -> locked camera, keyboard controlled
+               3. -toggle -> toggle camera mode between FREE and LOCKED  (Default)
+               Options
+               1. -f -> force without animations
+            
+            -> zoom [-x | -p] <value> : sets the cube zoom
+               Alias: scale
+               Modes
+               1. -x -> Multiples or times  (Default)
+               2. -p -> percentage, in range [0, 100]
+                                
+            -> pitch [-by | -f] <+ | - | value_in_deg> : Sets the camera pitch (rotation about X-axis)
+               Alias: rx, rotx, rotationx
+               Wildcards: + or up, - or down
+               Options
+               1. -by -> change current pitch by the given value
+               2. -f -> force without animations
+               
+            -> yaw [-by | -f] <+ | - | value_in_deg> : Sets the camera yaw (rotation about Y-axis)
+               Alias: ry, roty, rotationy
+               Wildcards: + or left, - or right
+               Options
+               1. -by -> change current yaw by the given value
+               2. -f -> force without animations
+                        
+            -> roll [-by | -f] <+ | - | value_in_deg> : Sets the camera roll (rotation about Z-axis)
+               Alias: rz, rotz, rotationz
+               Wildcards: + or left, - or right
+               Options
+               1. -by -> change current roll by the given value
+               2. -f -> force without animations
+               
+            -> exit / quit: quit  \s""";
 
-            SHIFT-Move....Inverse Move
-            ALT-Move.......Twice Move
-            CTRL-Move....2 Slice Move
-            """;
 
-    public static final String DES_CONTROLS_SOLVE =
-            """
-            S..................Solve
-            SPACE......Scramble
-            A..................Animate Moves
-            X..................Finish Moves
-            SHIFT X....Cancel Moves
-            SHIFT Q....Reset Cube
-            N / M..........Change Cube
-            """;
+    public static String getFullDescription(boolean withGeneral, boolean withUiControls) {
+        final StringJoiner sj = new StringJoiner("\n\n\n");
 
-    public static final String DES_CONTROLS_CUBE_CAMERA =
-            """
-            Up.....................Rotate Up
-            Down.........Rotate Down
-            Left.................Rotate Left
-            Right............Rotate Right
-            CTRL-Left...........Roll Left
-            CTRL-Right......Roll Right
+        if (withGeneral) {
+            sj.add(DESCRIPTION_GENERAL);
+        }
 
-            +/-...............Zoom In/Out
-            SHIFT +/-...............Speed
-            Q.................................Reset
-            C...........Toggle Controls
-            """;
+        sj.add(DESCRIPTION_MOVES);
+
+        if (withUiControls) {
+            sj.add(getUiControlsDescription());
+        }
+
+        sj.add(DESCRIPTION_COMMANDS);
+
+        return sj.toString();
+    }
+
+//    public static final String DES_CONTROLS_MOVES =
+//            """
+//            U....Up
+//            R....Right
+//            F....Front
+//            D...Down
+//            L....Left
+//            B...Back
+//
+//            SHIFT-Move....Inverse Move
+//            ALT-Move.......Twice Move
+//            CTRL-Move....2 Slice Move
+//            """;
+//
+//    public static final String DES_CONTROLS_SOLVE =
+//            """
+//            S..................Solve
+//            SPACE......Scramble
+//            A..................Animate Moves
+//            X..................Finish Moves
+//            SHIFT X....Cancel Moves
+//            SHIFT Q....Reset Cube
+//            N / M..........Change Cube
+//            """;
+//
+//    public static final String DES_CONTROLS_CUBE_CAMERA =
+//            """
+//            Up.....................Rotate Up
+//            Down.........Rotate Down
+//            Left.................Rotate Left
+//            Right............Rotate Right
+//            CTRL-Left...........Roll Left
+//            CTRL-Right......Roll Right
+//
+//            +/-...............Zoom In/Out
+//            SHIFT +/-...............Speed
+//            Q.................................Reset
+//            C...........Toggle Controls
+//            """;
 
     // Readme
 
-    public static boolean createReadme(@NotNull String instructions) {
+    public static boolean createReadme(@NotNull String content) {
         try (PrintWriter w = new PrintWriter("readme.txt", StandardCharsets.UTF_8)) {
-            w.print(instructions);
+            w.print(content);
             w.flush();
             return true;
         } catch (Throwable exc) {
-            exc.printStackTrace();
+            System.out.println("Failed to create readme.txt: " + exc.getMessage());
         }
 
         return false;
     }
 
-    public static boolean createShellInstructionsReadme() {
-        return R.createReadme(SHELL_INSTRUCTIONS);
+    public static boolean createFullDescriptionReadme(boolean withUiControls) {
+        return R.createReadme(getFullDescription(true, withUiControls));
     }
-
-
-
 
 }

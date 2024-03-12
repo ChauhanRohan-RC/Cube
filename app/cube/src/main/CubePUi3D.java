@@ -43,6 +43,7 @@ import java.util.function.Predicate;
 
 public class CubePUi3D extends PApplet implements CubeGL.Listener {
 
+    private static final boolean CREATE_README = false;
 
     // Fullscreen does not expand to entire screen with P2D and P3D renderers. See hack in setup() which solves this problem
     private static final boolean DEFAULT_FULLSCREEN = true;
@@ -308,7 +309,7 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
 
     @Override
     public void setup() {
-        U.println("-> UI Thread: " + Thread.currentThread().getName());
+//        U.println("-> UI Thread: " + Thread.currentThread().getName());
         final List<Runnable> tasks = new LinkedList<>();
 
         _w = width;
@@ -1480,13 +1481,13 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
         }
     }
 
-    public boolean onEscape(@Nullable KeyEvent event, final boolean verbose) {
+    public boolean onEscape(@Nullable KeyEvent event, final boolean canExit, final boolean verbose) {
         final int cancelled_count = cubeGL.cancelAllMoves();
         final boolean sol_cancelled = cancelSolve(verbose);
         final boolean sol_invalidated = invalidateSolution(false) != null;
         final boolean err_invalidated = invalidateSolveException() != null;
 
-        if (!(cancelled_count > 0 || sol_cancelled || sol_invalidated || err_invalidated)) {
+        if (canExit && !(cancelled_count > 0 || sol_cancelled || sol_invalidated || err_invalidated)) {
             exit();
         }
 
@@ -2048,16 +2049,17 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
         U.printerrln(R.SHELL_CAMERA + "Camera is not supported by the current Renderer: " + sketchRenderer());
     }
 
-
     protected void main_init(String[] args) {
-        //        R.createShellInstructionsReadme();
+        if (CREATE_README) {
+            R.createFullDescriptionReadme(true);
+        }
     }
 
     public void main_cli(String[] args) {
         main_init(args);
 
-//        println(DESCRIPTION_FULL);  // todo: des full
-        println("-> Command Line Thread: " + Thread.currentThread().getName() + "\n");
+        U.println(R.DESCRIPTION_GENERAL_WITH_HELP);
+//        U.println("-> Command Line Thread: " + Thread.currentThread().getName() + "\n");
         boolean running = true;
         Scanner sc;
 
@@ -2079,14 +2081,14 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
 
             switch (cmd) {
                 case "exit", "quit" -> running = false;
-                case "cancel", "stop" -> tasks.add(() -> onEscape(null, true));
+                case "cancel", "stop" -> tasks.add(() -> onEscape(null, false, true));
                 case "finish" -> tasks.add(() -> {
                     final int finishCount = cubeGL.finishAllMoves(false);
                     if (finishCount > 0) {
                         U.println("\n" + R.SHELL_MOVE + String.format("%d move%s have been finished", finishCount, finishCount > 1? "s": ""));
                     }
                 });
-                case "undo", "undo-last" -> tasks.add(cubeGL::undoRunningOrLastCommittedMove);
+                case "undo", "undo last" -> tasks.add(cubeGL::undoRunningOrLastCommittedMove);
                 case "solve" -> tasks.add(() -> this.solve(true));
                 case "anim", "toggle anim", "animations", "toggle animations" -> tasks.add(cubeGL::toggleMoveAnimationEnabled);
                 case "axes", "toggle axes" -> tasks.add(this::toggleDrawCubeAxes);
@@ -2094,10 +2096,7 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
                 case "poly-rhythm", "toggle poly-rhythm" -> tasks.add(this::togglePolyRhythmEnabled);
                 case "hud", "toggle hud" -> tasks.add(this::toggleHudEnabled);
                 case "controls", "toggle controls", "keys", "toggle keys" -> tasks.add(this::toggleShowKeyBindings);
-                case "cam", "camera", "toggle camera" -> tasks.add(() -> toggleFreeCamera(true));
-                case "cam free", "camera free" -> tasks.add(() -> setFreeCameraEnabled(true, true));
-                case "cam loc", "cam locked", "camera loc", "camera locked" -> tasks.add(() -> setFreeCameraEnabled(false, true));
-                case "expand", "toggle expand" ->  tasks.add(() -> toggleFullscreenExpanded(true, true));
+                case "expand", "toggle expand", "collapse", "toggle collapse" ->  tasks.add(() -> toggleFullscreenExpanded(true, true));
                 case "save", "save frame", "saveframe", "snap", "snapshot" -> tasks.add(this::snapshot);
                 default -> {
                     final String[] tokens = splitTokens(cmd);
@@ -2117,29 +2116,41 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
 
                     final String main_cmd = main_cmds.get(0);       // main command
                     final boolean forceFlag = ops.contains("-f");
-                    final boolean resetFlag = ops.contains("-reset");
+//                    final boolean resetFlag = ops.contains("-reset");
 
                     switch (main_cmd) {
                         case "help", "usage" -> {
+                            final Runnable usage_pr = () -> U.println(R.SHELL_ROOT + "Usage: help [-moves | -controls | -commands | -all]");
+
+                            if (ops.contains("-all")) {
+                                U.println("\n" + R.getFullDescription(true, true));
+                                continue;
+                            }
+
                             boolean done = false;
 
+                            if (ops.contains("-m") || ops.contains("-move") || ops.contains("-moves")) {
+                                U.println("\n" + R.DESCRIPTION_MOVES); 
+                                done = true;
+                            }
+
                             if (ops.contains("-control") || ops.contains("-controls") || ops.contains("-key") || ops.contains("-keys") || ops.contains("-keybindings") || ops.contains("-key-bindings")) {
-//                                println(DESCRIPTION_CONTROLS); // todo: des controls
+                                U.println("\n" + R.getUiControlsDescription());
                                 done = true;
                             }
 
                             if (ops.contains("-cmd") || ops.contains("-command") || ops.contains("-commands")) {
-//                                println(DESCRIPTION_COMMANDS);  // todo: des commands
+                                U.println("\n" + R.DESCRIPTION_COMMANDS);
                                 done = true;
                             }
 
-                            if (!done) {        // print everything
-//                                println(DESCRIPTION_FULL);      // todo: des full
+                            if (!done) {
+                                usage_pr.run();
                             }
                         }
 
                         case "win", "window" -> {
-                            final Runnable usage_pr = () -> println(R.SHELL_WINDOW + "Sets the window size or screen location.\nUsage: win [-size | -pos] <x> <y>\nWildcards: w -> initial windowed size (to be used with -size)  |  c -> center window on screen (to be used with -pos)\nExample: win -size 200 400  |  win -pos 10 20  |  win -pos center  |  win -size w\n");
+                            final Runnable usage_pr = () -> U.println(R.SHELL_WINDOW + "Sets the window size or screen location.\nUsage: win [-size | -pos] <x> <y>\nWildcards: w -> initial windowed size (to be used with -size)  |  c -> center window on screen (to be used with -pos)\nExample: win -size 200 400  |  win -pos 10 20  |  win -pos center  |  win -size w\n");
                             final int mode;
 
                             // Mode: 0 -> Size, 1 -> Position
@@ -2195,12 +2206,13 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
                             }
                         }
 
-                        case "n", "size", "cube", "cube-size" -> {
-                            final Runnable usage_pr = () -> println(R.SHELL_CUBE_SIZE + "Sets the cube size, in range [2, " + CubeI.DEFAULT_MAX_N + "].\nUsage: n [-f] <cube size>\nExample: n 12\n");
+                        case "n", "size", "dim", "dimension", "cube", "cube-size" -> {
+                            final Runnable usage_pr = () -> U.println(R.SHELL_CUBE_SIZE + "Sets the cube size, in range [2, " + CubeI.DEFAULT_MAX_N + "].\nUsage: n [-f] <cube size>\nExample: n 12\n");
+                            final Runnable cur_val_pr = () -> U.println(R.SHELL_CUBE_SIZE + String.format("Current cube size: %dx%d  |  Locked: %b", getN(), getN(), cubeGL.getCube().isLocked()));
 
                             final String count_str = main_cmds.size() > 1 ? main_cmds.get(1) : "";
                             if (count_str.isEmpty()) {
-                                println(R.SHELL_CUBE_SIZE + String.format("Current cube size: %dx%d  |  Locked: %b", getN(), getN(), cubeGL.getCube().isLocked()));
+                                cur_val_pr.run();
                                 usage_pr.run();
                                 continue;
                             }
@@ -2229,7 +2241,7 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
                         }
 
                         case "reset" -> {
-                            final Runnable usage_pr = () -> println(R.SHELL_RESET + "Usage: reset [-f] [-state | -env | -cam | -win | -all]\nExample: reset -env -state  |  Default: reset -f -state -cam\n");
+                            final Runnable usage_pr = () -> U.println(R.SHELL_RESET + "Usage: reset [-f] [-state | -env | -cam | -win | -all]\nExample: reset -env -state  |  Default: reset -f -state -cam\n");
 
                             boolean done = false;
 
@@ -2271,7 +2283,7 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
                         }
 
                         case "scramble", "shuffle" -> {
-                            final Runnable usage_pr = () -> println(R.SHELL_SCRAMBLE + "Scrambles the cube.\nUsage: scramble [num_moves]. Defaults to " + CubeI.DEFAULT_SCRAMBLE_MOVES + " moves\nExample: scramble 24\n");
+                            final Runnable usage_pr = () -> U.println(R.SHELL_SCRAMBLE + "Scrambles the cube.\nUsage: scramble [num_moves]. Defaults to " + CubeI.DEFAULT_SCRAMBLE_MOVES + " moves\nExample: scramble 24\n");
 
                             int count = CubeI.DEFAULT_SCRAMBLE_MOVES;
                             final String count_str = main_cmds.size() > 1 ? main_cmds.get(1) : "";
@@ -2311,8 +2323,8 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
                         }
 
                         case "speed", "animspeed", "anim-speed" -> {
-                            final Runnable cur_val_pr = () -> println(R.SHELL_ANIM_SPEED + String.format("Current: %s%% (%d ms)  |  Default: %s%% (%d ms)", Format.nf001(cubeGL.getMoveQuarterSpeedPercent()), cubeGL.getMoveQuarterDurationMs(), Format.nf001(GLConfig.moveQuarterDurationMsToPercent(GLConfig.MOVE_QUARTER_DURATION_MS_DEFAULT)), GLConfig.MOVE_QUARTER_DURATION_MS_DEFAULT));
-                            final Runnable usage_pr = () -> println(R.SHELL_ANIM_SPEED + String.format("Usage: speed [-d | -p] <value>. Modes: -d -> Duration (ms, in range [%d, %d]) | -p -> Percentage. Defaults to percentage (-p) values\nExample: speed 91 | speed -d 300\n", GLConfig.MOVE_QUARTER_DURATION_MS_MIN, GLConfig.MOVE_QUARTER_DURATION_MS_MAX));
+                            final Runnable cur_val_pr = () -> U.println(R.SHELL_ANIM_SPEED + String.format("Current: %s%% (%d ms)  |  Default: %s%% (%d ms)", Format.nf001(cubeGL.getMoveQuarterSpeedPercent()), cubeGL.getMoveQuarterDurationMs(), Format.nf001(GLConfig.moveQuarterDurationMsToPercent(GLConfig.MOVE_QUARTER_DURATION_MS_DEFAULT)), GLConfig.MOVE_QUARTER_DURATION_MS_DEFAULT));
+                            final Runnable usage_pr = () -> U.println(R.SHELL_ANIM_SPEED + String.format("Usage: speed [-d | -p] <value>. Modes: -d -> Duration (ms, in range [%d, %d]) | -p -> Percentage. Defaults to percentage (-p) values\nExample: speed 91 | speed -d 300\n", GLConfig.MOVE_QUARTER_DURATION_MS_MIN, GLConfig.MOVE_QUARTER_DURATION_MS_MAX));
 
                             final String val_str = main_cmds.size() > 1 ? main_cmds.get(1) : "";
                             if (val_str.isEmpty()) {
@@ -2351,13 +2363,13 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
                             }
 
                             if (done) {
-                                tasks.add(() -> println("\n" + R.SHELL_ANIM_SPEED + "Move animation speed set to " + Control.ANIMATION_SPEED.getFormattedValue(this)));
+                                tasks.add(() -> U.println("\n" + R.SHELL_ANIM_SPEED + "Move animation speed set to " + Control.ANIMATION_SPEED.getFormattedValue(this)));
                             }
                         }
 
-                        case "scale" -> {
-                            final Runnable cur_val_pr = () -> println(R.SHELL_SCALE + String.format("Current: %sx (%s%%)  |  Default: %sx (%s%%)", Format.nf001(getCubeDrawScale()), Format.nf001(getCubeDrawScalePercentage()), Format.nf001(GLConfig.CUBE_DRAW_SCALE_DEFAULT), Format.nf001(GLConfig.cubeDrawScaleToPercent(GLConfig.CUBE_DRAW_SCALE_DEFAULT))));
-                            final Runnable usage_pr = () -> println(R.SHELL_SCALE + String.format("Usage: scale [-x | -p] <value>. Modes:-p -> Percentage | -x -> Multiple (in range [%s, %s]). Defaults to multiple (-x) values\nExample: scale -x 2.5 | scale -p 50\n", Format.nf001(GLConfig.CUBE_DRAW_SCALE_MIN), Format.nf001(GLConfig.CUBE_DRAW_SCALE_MAX)));
+                        case "scale", "zoom" -> {
+                            final Runnable cur_val_pr = () -> U.println(R.SHELL_SCALE + String.format("Current: %sx (%s%%)  |  Default: %sx (%s%%)", Format.nf001(getCubeDrawScale()), Format.nf001(getCubeDrawScalePercentage()), Format.nf001(GLConfig.CUBE_DRAW_SCALE_DEFAULT), Format.nf001(GLConfig.cubeDrawScaleToPercent(GLConfig.CUBE_DRAW_SCALE_DEFAULT))));
+                            final Runnable usage_pr = () -> U.println(R.SHELL_SCALE + String.format("Usage: scale [-x | -p] <value>. Modes:-p -> Percentage | -x -> Multiple (in range [%s, %s]). Defaults to multiple (-x) values\nExample: scale -x 2.5 | scale -p 50\n", Format.nf001(GLConfig.CUBE_DRAW_SCALE_MIN), Format.nf001(GLConfig.CUBE_DRAW_SCALE_MAX)));
 
                             final String val_str = main_cmds.size() > 1 ? main_cmds.get(1) : "";
                             if (val_str.isEmpty()) {
@@ -2394,7 +2406,7 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
                             }
 
                             if (done) {
-                                tasks.add(() -> println("\n" + R.SHELL_SCALE + "Cube draw scale set to " + Control.CUBE_DRAW_SCALE.getFormattedValue(this)));
+                                tasks.add(() -> U.println("\n" + R.SHELL_SCALE + "Cube draw scale set to " + Control.CUBE_DRAW_SCALE.getFormattedValue(this)));
                             }
                         }
 
@@ -2430,14 +2442,33 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
                             }
                         }
 
+                        case "cam", "camera" -> {
+                            final Runnable usage_pr = () -> U.println(R.SHELL_CAMERA + "Sets the camera mode to FREE or LOCKED\nUsage: cam [-free | -locked | -toggle]. Defaults to -toggle");
+                            final Runnable cur_val_pr = () -> U.println("\n" + R.SHELL_CAMERA + "Current Camera Mode: " + (isFreeCameraEnabled()? "FREE": "LOCKED"));
+
+                            if (ops.contains("-free")) {
+                                tasks.add(() -> setFreeCameraEnabled(true, !forceFlag));
+                            } else if (ops.contains("-loc") || ops.contains("-locked")) {
+                                tasks.add(() -> setFreeCameraEnabled(false, !forceFlag));
+                            } else {
+                                // Toggle
+                                tasks.add(() -> toggleFreeCamera(!forceFlag));
+                                if (!ops.contains("-toggle")) {
+                                    usage_pr.run();
+                                }
+                            }
+
+                            tasks.add(cur_val_pr);
+                        }
+
                         case "rotationx", "rotx", "rx", "pitch" -> {
                             if (!isCameraSupported()) {
                                 printerrlnCameraUnsupported();
                                 continue;
                             }
 
-                            final Runnable cur_val_pr = () -> println(R.SHELL_ROTATION_X + String.format("Pitch (rotation about X-axis). Current: %s", Control.CAMERA_ROTATE_X.getFormattedValue(this)));
-                            final Runnable usage_pr = () -> println(R.SHELL_ROTATION_X + "Usage: pitch [-by | -f] <+ | - | value_in_deg>. Options: -by -> change rotation by  |  -f -> Force without animations\nExample: pitch 90  |  rx -by 10.5  |  pitch +\n");
+                            final Runnable cur_val_pr = () -> U.println(R.SHELL_ROTATION_X + String.format("Pitch (rotation about X-axis). Current: %s", Control.CAMERA_ROTATE_X.getFormattedValue(this)));
+                            final Runnable usage_pr = () -> U.println(R.SHELL_ROTATION_X + "Usage: pitch [-by | -f] <+ | - | value_in_deg>. Options: -by -> change rotation by  |  -f -> Force without animations\nExample: pitch 90  |  rx -by 10.5  |  pitch +\n");
 
                             final String val_str = main_cmds.size() > 1 ? main_cmds.get(1) : "";
                             if (val_str.isEmpty()) {
@@ -2471,8 +2502,8 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
                                 continue;
                             }
 
-                            final Runnable cur_val_pr = () -> println(R.SHELL_ROTATION_Y + String.format("Yaw (rotation about Y-axis). Current: %s", Control.CAMERA_ROTATE_Y.getFormattedValue(this)));
-                            final Runnable usage_pr = () -> println(R.SHELL_ROTATION_Y + "Usage: yaw [-by | -f] <+ | - | value_in_deg>. Options: -by -> change rotation by  |  -f -> Force without animations\nExample: yaw 90  |  ry -by 10.5  |  yaw -\n");
+                            final Runnable cur_val_pr = () -> U.println(R.SHELL_ROTATION_Y + String.format("Yaw (rotation about Y-axis). Current: %s", Control.CAMERA_ROTATE_Y.getFormattedValue(this)));
+                            final Runnable usage_pr = () -> U.println(R.SHELL_ROTATION_Y + "Usage: yaw [-by | -f] <+ | - | value_in_deg>. Options: -by -> change rotation by  |  -f -> Force without animations\nExample: yaw 90  |  ry -by 10.5  |  yaw -\n");
 
                             final String val_str = main_cmds.size() > 1 ? main_cmds.get(1) : "";
                             if (val_str.isEmpty()) {
@@ -2506,8 +2537,8 @@ public class CubePUi3D extends PApplet implements CubeGL.Listener {
                                 continue;
                             }
 
-                            final Runnable cur_val_pr = () -> println(R.SHELL_ROTATION_Z + String.format("Roll (rotation about Z-axis). Current: %s", Control.CAMERA_ROTATE_Z.getFormattedValue(this)));
-                            final Runnable usage_pr = () -> println(R.SHELL_ROTATION_Z + "Usage: roll [-by | -f] <+ | - | value_in_deg>. Options: -by -> change rotation by  |  -f -> Force without animations\nExample: roll 90  |  rz -by 10.5  |  roll right\n");
+                            final Runnable cur_val_pr = () -> U.println(R.SHELL_ROTATION_Z + String.format("Roll (rotation about Z-axis). Current: %s", Control.CAMERA_ROTATE_Z.getFormattedValue(this)));
+                            final Runnable usage_pr = () -> U.println(R.SHELL_ROTATION_Z + "Usage: roll [-by | -f] <+ | - | value_in_deg>. Options: -by -> change rotation by  |  -f -> Force without animations\nExample: roll 90  |  rz -by 10.5  |  roll right\n");
 
                             final String val_str = main_cmds.size() > 1 ? main_cmds.get(1) : "";
                             if (val_str.isEmpty()) {

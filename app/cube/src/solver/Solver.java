@@ -444,6 +444,11 @@ public class Solver {
             return solve3(cube, createCopy, c);
         }
 
+        // If every facelet is at its original face
+        if (cube.calculateIsSolved()) {
+            return Solution.empty(cube.n());
+        }
+
         final List<Move> internalSol = cube.getInternalSolution();
         if (internalSol == null) {
             throw new SolveException(ERR_CODE_INTERNAL_SOLUTION_NOT_SUPPORTED, "No solver module registered for " + cube.n() + "x" + cube.n() + " cube!");
