@@ -15,16 +15,13 @@
 
 ## Usage
 
-* Install [Java](https://www.oracle.com/in/java/technologies/downloads/) on your computer and add it to the path
-* Clone this repository  
-  `git clone https://github.com/ChauhanRohan-RC/Cube.git`
-
-####
-
-* Navigate to [out/artifacts/cube_jar](out/artifacts/cube_jar) folder
+* Install [Java](https://openjdk.org/install/) on your computer and add it to the path
+* Download the latest release from [GitHub](https://github.com/ChauhanRohan-RC/Cube.git/releases/latest).  
+OR  
+Clone this repository using `git clone https://github.com/ChauhanRohan-RC/Cube.git`  
+and navigate to [out/artifacts/cube_jar](out/artifacts/cube_jar) folder
 * `Optional`: Checkout the configuration file [configuration.ini](out/artifacts/cube_jar/configuration.ini)
-* Run [launch.bat](out/artifacts/cube_jar/launch.bat).
-* Optionally, open up the terminal and run `java -jar cube.jar`
+* Open up CMD/Terminal and run `java -jar cube.jar`
 
 ![18x18 Scrambled](gallery/cube-18x18-scrambled.png)
 
