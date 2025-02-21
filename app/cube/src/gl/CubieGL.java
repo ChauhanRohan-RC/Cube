@@ -68,6 +68,7 @@ public class CubieGL implements Drawable, Cubie.Listener {
 
     @Override
     public void onCubieRotated(@NotNull Axis around, int quarters) {
+        // To rotate internal faces, which are not managed by Cubie
         for (int i = cubie.noOfFaces(); i < facesGL.length; i++) {
             facesGL[i].getCubieFace().rotate(around, quarters);
         }

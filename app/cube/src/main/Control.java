@@ -18,39 +18,33 @@ import java.util.function.Function;
 
 public enum Control {
 
-    ESCAPE("Cancel Solve",
-            "Stop solving | Cancel pending moves | exit",
+    ESCAPE("Cancel",
+            "Cancel pending moves and stop solving, or exit.",
             ui -> "",
-            "Esc",
-            "Escape key",
+            "Escape",
+            "",
             (ui, ev) -> {
 //                final int mod = ev.getModifiers();
                 if (ev.getKeyCode() == Control.ESCAPE_KEY_CODE_SUBSTITUTE) {
-                    return ui.onEscape(ev, true);
+                    return ui.onEscape(ev, true, true);
                 }
 
                 return false;
             }, false),
 
-    // Only when fullscreen
-    EXPAND_FULLSCREEN("Window",
-            "Sets the fullscreen mode to Expanded or Windowed.",
-            ui -> ui.isFullscreenExpanded()? "EXP": "WIN",
-            "W",
-            "",
+    MOVES("Moves",
+            "Cube moves.",
+            ui -> String.valueOf(ui.cubeGL.getCube().getAllAppliedMovesCount()),        // can be moves in stack
+            "[Ctr]-[Shf]-[U R F D L B]",
+            "[U | R | F | D | L | B] keys -> Clockwise Move\nwith Shift -> Anticlockwise Move\nwith Ctrl -> 2-Slice Move\nwith Ctrl-Shift -> 180° Move",
             (ui, ev) -> {
-                final int mod = ev.getModifiers();
-                final int kc = ev.getKeyCode();
-                if (ui.isFullscreen() && kc == java.awt.event.KeyEvent.VK_W && mod == 0) {
-                    ui.toggleFullscreenExpanded(true, true);
-                    return true;
-                }
-
-                return false;
-            }, false),
+                final Move move = createMove(ev.getKeyCode(), ev.getModifiers());
+                return move != null && ui.cubeGL.applyMove(move);
+            },
+            false, true, null),
 
     CUBE_SIZE("Cube",
-            "Cube Dimension.",
+            "Change cube Dimension.",
             ui -> (ui.isCubeLocked() ? "LOCKED | " : "") + (ui.getN() + "x" + ui.getN()),
             "[Ctr | Shf]-N",
             "N -> Increase Size  |  Shift-N -> Decrease Size  |  Ctrl-[Shift]-N -> Force change size",
@@ -62,11 +56,46 @@ public enum Control {
                 return false;
             }, false),
 
+    SCRAMBLE("Scramble",
+            "Scramble with default number of moves (default: " + CubeI.DEFAULT_SCRAMBLE_MOVES + ").",
+            ui -> "",
+            "Space",
+            "",
+            (ui, ev) -> {
+                final int mod = ev.getModifiers();
+                if (ev.getKeyCode() == java.awt.event.KeyEvent.VK_SPACE && mod == 0) {
+                    return ui.cubeGL.scramble(CubeI.DEFAULT_SCRAMBLE_MOVES);
+                }
+
+                return false;
+            }, false, true, null),
+
+    SOLVE_OR_APPLY("Solve",
+            "Solve or apply solution.",
+            ui -> "",
+            "Enter",
+            "",
+            (ui, ev) -> {
+                final int mod = ev.getModifiers();
+                if (ev.getKeyCode() == java.awt.event.KeyEvent.VK_ENTER && mod == 0) {
+                    ui.solve(true);
+                    return true;
+                }
+
+                final Solver.Solution solution = ui.getCurrentSolution();
+                if (solution != null && ev.getKeyCode() == java.awt.event.KeyEvent.VK_C && mod == Event.CTRL) {
+                    Format.copyToClipboardNoThrow(solution.getSequence());
+                    return true;
+                }
+
+                return false;
+            }, false, true, null),
+
     RESET("Reset",
             "Resets the Cube.",
             ui -> "",
             "[Ctr | Shf]-Q",
-            "Q -> Reset Cube State  |  Shift-Q -> Reset Camera  |  Ctrl-Q -> Reset Simulation | Ctrl-Shift-Q -> Reset Everything",
+            "Q -> Reset Cube State\nShift-Q -> Reset Camera\nCtrl-Q -> Reset Simulation\nCtrl-Shift-Q -> Reset Everything",
             (ui, ev) -> {
                 final int mod = ev.getModifiers();
                 if (ev.getKeyCode() == java.awt.event.KeyEvent.VK_Q) {
@@ -90,76 +119,54 @@ public enum Control {
                 return false;
             }, false),
 
-    HUD_ENABLED("HUD",
-            "Show/Hide HUD.",
-            ui -> ui.isHudEnabled() ? "ON" : "OFF",
-            "H",
+    UNDO_LAST_MOVE("Undo Last",
+            "Undo last move",
+            ui -> {
+                final Move move = ui.cubeGL.getCube().peekLastMove();
+                return move != null ? move.toString() : "";
+            },
+
+            "Ctr-Z",
             "",
             (ui, ev) -> {
                 final int mod = ev.getModifiers();
-                if (ev.getKeyCode() == java.awt.event.KeyEvent.VK_H && mod == 0) {
-                    ui.toggleHudEnabled();
-                    return true;
+                if (ev.getKeyCode() == java.awt.event.KeyEvent.VK_Z && mod == Event.CTRL /* Ctrl only */) {
+                    return ui.cubeGL.undoRunningOrLastCommittedMove();
                 }
 
                 return false;
-            }, false, true, null),
+            }, false),
 
-    SHOW_KEY_BINDINGS("Controls",
-            "Show/Hide Control Key Bindings.",
-            ui -> ui.areKeyBindingsShown() ? "ON" : "OFF",
-            "C",
+    FINISH_ALL_MOVES("Finish Moves",
+            "Finish all running and pending moves",
+            ui -> {
+                final int count = ui.cubeGL.runningMovesCount() + ui.cubeGL.pendingMovesCount();
+                return count > 0 ? String.valueOf(count) : "";
+            },
+            "X",
             "",
             (ui, ev) -> {
                 final int mod = ev.getModifiers();
-                if (ev.getKeyCode() == java.awt.event.KeyEvent.VK_C && mod == 0) {
-                    ui.toggleShowKeyBindings();
-                    return true;
-                }
-
-                return false;
-            }, false, true, null),
-
-
-    SOUND("Sound",
-            "Toggle Sounds.",
-            ui -> ui.isSoundEnabled() ? "ON" : "OFF",
-            "S",
-            "",
-            (ui, ev) -> {
-                final int mod = ev.getModifiers();
-                if (ev.getKeyCode() == java.awt.event.KeyEvent.VK_S && mod == 0) {
-                    ui.toggleSoundEnabled();
+                if (ev.getKeyCode() == java.awt.event.KeyEvent.VK_X && (mod == 0)) {
+                    ui.cubeGL.finishAllMoves(false);
                     return true;
                 }
 
                 return false;
             }, false),
 
-    POLY_RHYTHM("Poly Rhythm",
-            "Toggle Poly Rhythm (play multiple notes at once).",
-            ui -> ui.isPolyRhythmEnabled() ? "ON" : "OFF",
-            "Shf-S",
+    CANCEL_ALL_MOVES("Cancel Moves",
+            "Cancel all running and pending moves",
+            ui -> {
+                final int count = ui.cubeGL.runningMovesCount() + ui.cubeGL.pendingMovesCount();
+                return count > 0 ? String.valueOf(count) : "";
+            },
+            "Shf-X",
             "",
             (ui, ev) -> {
                 final int mod = ev.getModifiers();
-                if (ev.getKeyCode() == java.awt.event.KeyEvent.VK_S && mod == Event.SHIFT /* Shift only */) {
-                    ui.togglePolyRhythmEnabled();
-                    return true;
-                }
-
-                return false;
-            }, false),
-
-    SAVE_FRAME("Save Frame",
-            "Save Current graphics frame in a png file.",
-            ui -> "",
-            "Ctrl-S",
-            "",
-            (ui, ev) -> {
-                final int mod = ev.getModifiers();
-                if (ev.getKeyCode() == java.awt.event.KeyEvent.VK_S && mod == Event.CTRL /* Ctrl only */) {
-                    ui.snapshot();
+                if (ev.getKeyCode() == java.awt.event.KeyEvent.VK_X && (mod == Event.SHIFT)) {
+                    ui.cubeGL.finishAllMoves(true);
                     return true;
                 }
 
@@ -175,21 +182,6 @@ public enum Control {
                 final int mod = ev.getModifiers();
                 if (ev.getKeyCode() == java.awt.event.KeyEvent.VK_A && mod == 0) {
                     ui.cubeGL.toggleMoveAnimationEnabled();
-                    return true;
-                }
-
-                return false;
-            }, false),
-
-    DRAW_CUBE_AXES("Axes",
-            "Show/Hide cube axes.",
-            ui -> ui.isDrawCubeAxesEnabled() ? "ON" : "OFF",
-            "Shf-A",
-            "",
-            (ui, ev) -> {
-                final int mod = ev.getModifiers();
-                if (ev.getKeyCode() == java.awt.event.KeyEvent.VK_A && mod == Event.SHIFT) {
-                    ui.toggleDrawCubeAxes();
                     return true;
                 }
 
@@ -229,103 +221,60 @@ public enum Control {
                 return false;
             }, false),
 
-
-    MOVES("Moves",
-            "Cube moves",
-            ui -> String.valueOf(ui.cubeGL.getCube().getMovesInStackCount()),
-            "[Ctr]-[Shf]-[U R F D L B]",
-            "[U | R | F | D | L | B] keys -> Clockwise Move\nShift-[U | R | F | D | L | B] -> Anticlockwise Move\nCtrl-[U | R | F | D | L | B] -> 2-Slice Move\nCtrl-Shift-[U | R | F | D | L | B] -> 180° Move",
-            (ui, ev) -> {
-                final Move move = createMove(ev.getKeyCode(), ev.getModifiers());
-                return move != null && ui.cubeGL.applyMove(move);
-            },
-            false, true, null),
-
-    FINISH_ALL_MOVES("Finish Moves",
-            "Finish all running and pending moves",
-            ui -> {
-                final int count = ui.cubeGL.runningMovesCount() + ui.cubeGL.pendingMovesCount();
-                return count > 0 ? String.valueOf(count) : "";
-            },
-            "X",
+    SOUND("Sound",
+            "Toggle Sounds.",
+            ui -> ui.isSoundEnabled() ? "ON" : "OFF",
+            "S",
             "",
             (ui, ev) -> {
                 final int mod = ev.getModifiers();
-                if (ev.getKeyCode() == java.awt.event.KeyEvent.VK_X && (mod == 0)) {
-                    ui.cubeGL.finishAllMoves(false);
+                if (ev.getKeyCode() == java.awt.event.KeyEvent.VK_S && mod == 0) {
+                    ui.toggleSoundEnabled();
                     return true;
                 }
 
                 return false;
             }, false),
 
-    CANCEL_ALL_MOVES("Cancel Moves",
-            "Cancel all running and pending moves",
-            ui -> {
-                final int count = ui.cubeGL.runningMovesCount() + ui.cubeGL.pendingMovesCount();
-                return count > 0 ? String.valueOf(count) : "";
-            },
-            "Shf-X",
-            "Shift-X",
+    POLY_RHYTHM("Poly Rhythm",
+            "Toggle Poly Rhythm (play multiple notes at once).",
+            ui -> ui.isPolyRhythmEnabled() ? "ON" : "OFF",
+            "Shf-S",
+            "",
             (ui, ev) -> {
                 final int mod = ev.getModifiers();
-                if (ev.getKeyCode() == java.awt.event.KeyEvent.VK_X && (mod == Event.SHIFT)) {
-                    ui.cubeGL.finishAllMoves(true);
+                if (ev.getKeyCode() == java.awt.event.KeyEvent.VK_S && mod == Event.SHIFT /* Shift only */) {
+                    ui.togglePolyRhythmEnabled();
                     return true;
                 }
 
                 return false;
             }, false),
 
-
-    UNDO_LAST_MOVE("Undo Last",
-            "Undo last move",
-            ui -> {
-                final Move move = ui.cubeGL.getCube().peekLastMove();
-                return move != null ? move.toString() : "";
-            },
-
-            "Ctr-Z",
+    HUD_ENABLED("HUD",
+            "Show/Hide HUD.",
+            ui -> ui.isHudEnabled() ? "ON" : "OFF",
+            "H",
             "",
             (ui, ev) -> {
                 final int mod = ev.getModifiers();
-                if (ev.getKeyCode() == java.awt.event.KeyEvent.VK_Z && mod == Event.CTRL /* Ctrl only */) {
-                    return ui.cubeGL.undoRunningOrLastCommittedMove();
-                }
-
-                return false;
-            }, false),
-
-
-    SCRAMBLE("Scramble",
-            "Scramble with default number of moves (default: " + CubeI.DEFAULT_SCRAMBLE_MOVES + ").",
-            ui -> "",
-            "Space",
-            "",
-            (ui, ev) -> {
-                final int mod = ev.getModifiers();
-                if (ev.getKeyCode() == java.awt.event.KeyEvent.VK_SPACE && mod == 0) {
-                    return ui.cubeGL.scramble(CubeI.DEFAULT_SCRAMBLE_MOVES);
+                if (ev.getKeyCode() == java.awt.event.KeyEvent.VK_H && mod == 0) {
+                    ui.toggleHudEnabled();
+                    return true;
                 }
 
                 return false;
             }, false, true, null),
 
-    SOLVE_OR_APPLY("Solve",
-            "Solve or apply solution.",
-            ui -> "",
-            "Enter",
-            "Enter or Return key",
+    SHOW_KEY_BINDINGS("Controls",
+            "Show/Hide Control Key Bindings.",
+            ui -> ui.areKeyBindingsShown() ? "ON" : "OFF",
+            "C",
+            "",
             (ui, ev) -> {
                 final int mod = ev.getModifiers();
-                if (ev.getKeyCode() == java.awt.event.KeyEvent.VK_ENTER && mod == 0) {
-                    ui.solve(true);
-                    return true;
-                }
-
-                final Solver.Solution solution = ui.getCurrentSolution();
-                if (solution != null && ev.getKeyCode() == java.awt.event.KeyEvent.VK_C && mod == Event.CTRL) {
-                    Format.copyToClipboardNoThrow(solution.getSequence());
+                if (ev.getKeyCode() == java.awt.event.KeyEvent.VK_C && mod == 0) {
+                    ui.toggleShowKeyBindings();
                     return true;
                 }
 
@@ -333,7 +282,72 @@ public enum Control {
             }, false, true, null),
 
 
-    /* Camera Controls */
+    /* Ui and Camera Controls ................................................... */
+
+    // Only when fullscreen
+    EXPAND_FULLSCREEN("Window",
+            "Sets the fullscreen mode to Expanded or Windowed.",
+            ui -> ui.isFullscreenExpanded()? "EXP": "WIN",
+            "W",
+            "",
+            (ui, ev) -> {
+                final int mod = ev.getModifiers();
+                final int kc = ev.getKeyCode();
+                if (ui.isFullscreen() && kc == java.awt.event.KeyEvent.VK_W && mod == 0) {
+                    ui.toggleFullscreenExpanded(true, true);
+                    return true;
+                }
+
+                return false;
+            }, false),
+
+    DRAW_CUBE_AXES("Axes",
+            "Show / Hide cube axes.",
+            ui -> ui.isDrawCubeAxesEnabled() ? "ON" : "OFF",
+            "Shf-A",
+            "",
+            (ui, ev) -> {
+                final int mod = ev.getModifiers();
+                if (ev.getKeyCode() == java.awt.event.KeyEvent.VK_A && mod == Event.SHIFT) {
+                    ui.toggleDrawCubeAxes();
+                    return true;
+                }
+
+                return false;
+            }, false),
+
+
+    SAVE_FRAME("Save Frame",
+            "Save Current graphics frame in a png file.",
+            ui -> "",
+            "Ctr-S",
+            "",
+            (ui, ev) -> {
+                final int mod = ev.getModifiers();
+                if (ev.getKeyCode() == java.awt.event.KeyEvent.VK_S && mod == Event.CTRL /* Ctrl only */) {
+                    ui.snapshot();
+                    return true;
+                }
+
+                return false;
+            }, false),
+
+    CUBE_DRAW_SCALE("Zoom",
+            "Cube Zoom, in both multiples and percentage.",
+            ui -> String.format("%sx (%s%%)",
+                    Format.nf001(ui.getCubeDrawScale()),
+                    Format.nf001(ui.getCubeDrawScalePercentage())),
+            "[Shf]-Z",
+            "Z -> Zoom-In  |  Shift-Z -> Zoom-Out",
+            (ui, ev) -> {
+                final int mod = ev.getModifiers();
+                if (ev.getKeyCode() == java.awt.event.KeyEvent.VK_Z && (mod == 0 || mod == Event.SHIFT) /* Only shift allowed */) {
+                    ui.stepCubeDrawScale(false, mod == 0);
+                    return true;
+                }
+
+                return false;
+            }, false),
 
     FREE_CAMERA("Camera",
             "Toggle camera mode between FREE and LOCKED.",
@@ -344,23 +358,6 @@ public enum Control {
                 final int mod = ev.getModifiers();
                 if (ev.getKeyCode() == java.awt.event.KeyEvent.VK_V && mod == 0) {
                     ui.toggleFreeCamera(true);
-                    return true;
-                }
-
-                return false;
-            }, false),
-
-    CUBE_DRAW_SCALE("Scale",
-            "Cube draw scale, in both multiples and percentage.",
-            ui -> String.format("%sx (%s%%)",
-                    Format.nf001(ui.getCubeDrawScale()),
-                    Format.nf001(ui.getCubeDrawScalePercentage())),
-            "[Shf]-Z",
-            "Z -> Increase Scale  |  Shift-Z -> Decrease Scale",
-            (ui, ev) -> {
-                final int mod = ev.getModifiers();
-                if (ev.getKeyCode() == java.awt.event.KeyEvent.VK_Z && (mod == 0 || mod == Event.SHIFT) /* Only shift allowed */) {
-                    ui.stepCubeDrawScale(false, mod == 0);
                     return true;
                 }
 
@@ -403,7 +400,7 @@ public enum Control {
     CAMERA_ROTATE_Z("Roll-Z",
             "Controls the Camera ROLL (rotation about Z-Axis).",
             ui -> Format.nf001(U.normalizeDegrees((float) Math.toDegrees(ui.getCamera().getRotations()[2]))) + "°",
-            "Shf-Up/Down",
+            "Shf-Left/Right",
             "Shift-[LEFT | RIGHT] arrow keys",
             (ui, ev) -> {
 //                final int mod = ev.getModifiers();
@@ -622,28 +619,33 @@ public enum Control {
             sj.append("-> ").append(c.keyBindingLabel).append(" : ").append(c.label)
                     .append("  [").append(c.continuousKeyEvent ? "Continuous" : "Discrete").append(']');
 
-            // Descriptions
-            for (String line : c.description.split("\n")) {
-                if (line == null || line.isEmpty())
-                    continue;
 
-                sj.append("\n\t").append(line);
+            // Descriptions
+            if (Format.notEmpty(c.description)) {
+                for (String line: c.description.split("\n")) {
+                    if (Format.isEmpty(line))
+                        continue;
+
+                    sj.append("\n\t").append(line);
+                }
             }
 
-            boolean firstKeyBind = true;
             // Key bindings Description
-            for (String line : c.keyBindingDescription.split("\n")) {
-                if (line == null || line.isEmpty())
-                    continue;
+            if (Format.notEmpty(c.keyBindingDescription)) {
+                boolean firstKeyBind = true;
+                for (String line: c.keyBindingDescription.split("\n")) {
+                    if (Format.isEmpty(line))
+                        continue;
 
-                if (firstKeyBind) {
-                    sj.append("\n\t<Keys> : ");
-                    firstKeyBind = false;
-                } else {
-                    sj.append("\n\t              ");
+                    if (firstKeyBind) {
+                        sj.append("\n\t<Keys> : ");
+                        firstKeyBind = false;
+                    } else {
+                        sj.append("\n\t         ");
+                    }
+
+                    sj.append(line);
                 }
-
-                sj.append(line);
             }
         }
 

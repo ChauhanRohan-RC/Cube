@@ -1,1 +1,0 @@
-java -jar cube.jar
